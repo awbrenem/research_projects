@@ -1,0 +1,50 @@
+rbsp_efw_init
+
+        angle = 45. * !dtor
+        radii = 0.1*indgen(150) * 6370.
+        gsmx = radii*cos(angle)
+        gsmy = radii*sin(angle)
+        gsmz = gsmx
+        gsmz[*] = 0.
+
+        pos = [[gsmx],[gsmy],[gsmz]]
+
+
+        t0 = time_double('2014-01-06/21:00')
+        times = indgen(150) + t0
+
+        da = {coord_sys:'gsm',st_type:'pos',units:'km'}
+        dlimits = {spec:0,log:0,data_att:da,colors:[2,4,6],labels:['x_gse','y_gse','z_gse'],ysubtitle:'[km]'}
+
+        store_data,'pos_gsm',data={x:times,y:pos},dlimits=dlimits
+
+        posname = 'pos_gsm'
+
+        model = 't89'
+        if model eq 't89' then par = 2.0D
+
+	;; if model eq 't96' then call_procedure,'t'+model,posname,pdyn=2.0D,dsti=-30.0D,$
+	;; 	yimf=0.0D,zimf=-5.0D
+	if model eq 't89' then call_procedure,'t'+model,posname,kp=2.0		
+
+
+;	copy_data,'pos_gsm_b'+model,rbspx+'_mag_gsm_'+model
+
+        get_data,'pos_gsm_b'+model,data=mag
+
+        magnit = sqrt(mag.y[*,0]^2 + mag.y[*,1]^2 + mag.y[*,2]^2)
+        fce = 28.*magnit
+        fce_10 = fce * 0.1
+
+        plot,radii/6370.,fce,xrange=[0,20],yrange=[100,100000],ylog=1
+        oplot,radii/6370,fce_10
+
+        tplot,'pos_gsm_b'+model
+
+
+        ;model output can be choppy (some problem within t89.pro). Smooth it here
+        get_data,posname,data=dd
+        dt = dd.x[1] - dd.x[0]
+        rbsp_detrend,rbspx+'_mag_gsm_'+model,dt/8.
+        store_data,rbspx+'_mag_gsm_'+model,/delete
+        copy_data,rbspx+'_mag_gsm_'+model+'_smoothed',rbspx+'_mag_gsm_'+model

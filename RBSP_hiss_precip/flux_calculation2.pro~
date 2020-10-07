@@ -1,0 +1,110 @@
+;Calculate the flux of e- scattered into loss cone on RBSP
+
+;Jan 3rd, 2014 for time 20:05 UT
+
+
+;Here's what I'm doing. By knowing the pitch angle diffusion rate I can find how far in
+;pitch angle an electron will scatter in a single bounce period. (Half of) Electrons within this 
+;angular distance from the loss cone will be lost in this time. If I take into account the
+;entire 2*Pi solid angle, all electrons within this "thin slice" are lost. 
+;For simplicity, I'm using the MagEIS differential flux at the 8 deg pitch angle and assuming
+;that the DLC is at 7 deg pitch angle (I find that e- will scatter by ~1 deg in pitch angle
+;each bounce.)
+
+
+	t = '2014-01-03/20:05'
+
+;Start with MagEIS differential flux at 8 deg PA, 50 keV  (from Joe Fennell)
+	df = 9d4   ;e-/cm2/s/sr/keV   (IS THIS ACTUALLY PER KEV? OR IS IT FOR THE ENTIRE 8 DEG WIDE BIN???)
+
+;; ;Energy bin width (not used at this time)
+ 	dE = 9.
+
+ ;       df50 = df50/dE50
+	
+;MagEIS angular bin size at 8 deg (Table 1, Blake et al., 2013)
+	dtheta = 6.4
+	
+
+;Now find the "thin slice" solid angle term.
+;To get this I need to know how far an electron will random walk in a single
+;bounce period.
+
+	;bounce-averaged diffusion coeff for 30 keV
+	Daa = 8.12d-5  ;1/s
+
+
+ 	;Bounce period
+	ang = 8.  ;Pitch angle
+	L = 5.0   ;Lshell
+	;bounce period for 30 keV e- at 8 deg pitch angle at L=5.2
+	Tb = 5.62d-2 * L * (1-0.43*sin(ang*!dtor))/sqrt(50./1000.) ;=1.2 s
+
+
+                                ;Since Tb50 ~ 1 sec, instead of
+                                ;integrating over a bounce period (as
+                                ;was done in calculation of
+                                ;bounce-averaged diffusion
+                                ;coeff, we'll just leave every
+                                ;thing in 1/s
+
+
+
+	;Random walk distance in single bounce <Daa> = dangle^2/2tb  (Kennel69 eqn3)
+	dangle = sqrt(Daa*2*Tb)/!dtor  ;=0.8 deg
+
+	;"thin slice" solid angle
+	SA = 2*!pi*sin(8*!dtor) * dangle*!dtor ;=0.012
+
+
+;Now I can solve for the #/s/cm2/keV of electrons lost (from MagEIS)
+	nm = df * SA   
+
+
+;Of these electrons in the "thin slice" half will random walk to the DLC and the other
+;half to higher pitch angles. So, 
+	nm = nm/2. ;=545 e-/s/cm2/keV
+
+
+;BARREL e-/s/cm2 50 keV (from Michael McCarthy's email)
+        nb = 260   ;e-/cm2/s/keV  for 50 keV only from (20:13-20:19 UT on Jan 3rd)
+
+	;; ;nb = 1054641.8 ;e-/cm2/s  (OLD NUMBER)
+
+
+
+
+;But, we have to account for the enhanced flux caused by 
+;conservation of flux in narrowing flux tube
+;Find ratio of B2/B1 = A1/A2
+
+	ilat = acos(sqrt(1/L))/!dtor  ;invariant latitude
+
+	.compile ~/Desktop/community/dipole.pro
+	dip = dipole(L)
+
+	plot,dip.r - 6370.,yrange=[0,700]
+	radius = dip.r - 6370.
+	boo = where(radius le 70.)
+	boo = boo[0]
+
+	Bo_70km = dip.b[boo]    ;Bo_70km = 53505 nT
+	Bo_mageq = 160.   ;nT  at 20:05 UT
+
+ 
+        Bratio = Bo_70km/Bo_mageq ;=334
+         
+
+
+
+;--------------------------------------------------
+;Compare BARREL and RBSP observations
+;--------------------------------------------------
+
+        ;What should be observed by BARREL is the MagEIS flux
+        ;scaled by Bratio
+
+        nb2 = nm * Bratio   
+
+        print,nb2/nb ;=700  (should equal 1 if BARREL and MagEIS calculations agree)
+

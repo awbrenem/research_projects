@@ -1,0 +1,78 @@
+date = '2014-01-03'
+timespan,date
+tlimit,'2014-01-03/18:00','2014-01-03/23:00'
+
+
+path = '~/Desktop/Research/RBSP_hiss_precip/solar_wind_ulf/cdf_files/'
+
+;**************************************************
+;Wind data
+;**************************************************
+
+fn = 'wi_h2_mfi_20140103_v04.cdf'
+cdf2tplot,files=path+fn
+
+tplot,['BF1','BGSE']
+
+;; fn = 'wi_h0_mfi_20140103_v04.cdf'
+
+;; fn ='wi_pm_3dp_20140103_v05.cdf'
+;; cdf2tplot,files=path+fn
+
+;; fn = 'wi_plsp_3dp_20140103_v02.cdf'
+;; cdf2tplot,files=path+fn
+
+
+;**************************************************
+;ACE data
+;**************************************************
+
+fn = 'ac_h0_mfi_20140103_v06.cdf'
+cdf2tplot,files=path+fn
+
+tplot,['Magnitude','BGSEc','SC_pos_GSE']
+
+;**************************************************
+;OMNI data
+;**************************************************
+
+fn = 'omni_hro_1min_20140101_v01.cdf'
+cdf2tplot,files=path+fn
+tplot,['flow_speed','proton_density','Pressure']
+
+
+
+
+get_data,'Pressure',data=dd
+goo = where(dd.y lt 0.)
+if goo[0] ne -1 then dd.y[goo] = !values.f_nan
+xv = dd.x
+yv = dd.y
+interp_gap,xv,yv
+store_data,'Pressure',data={x:xv,y:yv}
+options,'Pressure','colors',250
+
+
+get_data,'proton_density',data=dd
+goo = where(dd.y lt 0.)
+if goo[0] ne -1 then dd.y[goo] = !values.f_nan
+xv = dd.x
+yv = dd.y
+interp_gap,xv,yv
+store_data,'proton_density',data={x:xv,y:yv}
+options,'proton_density','colors',250
+
+
+
+rbsp_detrend,['Pressure','proton_density'],60.*30.
+
+tplot,['Pressure','proton_density']+'_detrend'
+
+
+.compile /Users/aaronbreneman/Desktop/code/Aaron/IDL/analysis/plot_wavestuff.pro
+plot_wavestuff,'proton_density',/psd,/spec
+
+
+
+
+

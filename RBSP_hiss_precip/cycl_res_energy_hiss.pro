@@ -1,0 +1,862 @@
+;Calculates cyclotron resonance energies for the BARREL/RBSP hiss
+;events. Outputs a file at the end that Alexa uses for the diffusion
+;calculations
+
+cdf2tplot,file='~/Desktop/Research/RBSP_hiss_precip/emfisis_cdfs/rbsp-a_density_emfisis_20130126_v1.4.15.cdf'
+cdf2tplot,file='~/Desktop/Research/RBSP_hiss_precip/emfisis_cdfs/rbsp-b_density_emfisis_20130126_v1.3.15.cdf'
+
+tplot_options,'title','from cycl_res_energy_hiss.pro'
+
+;date = '2014-01-06'
+;date = '2014-01-03'
+date = '2013-01-26'
+
+timespan,date
+probe = 'a'
+
+rbsp_efw_init
+
+
+;payloads = ['2K','2W','2L','2X']
+payloads = ['2I','2W']
+spinperiod = 11.8
+rbsp_load_barrel_lc,payloads,date,type='rcnt'
+
+
+rbsp_efw_position_velocity_crib,/noplot,/notrace
+
+;---------------------------------------------------------
+;EMFISIS file with wave normal angles
+pn = '~/Desktop/code/Aaron/datafiles/rbsp/emfisis_cdfs/'
+fnt ='rbsp-a_wna-survey_emfisis-L4_20140103_v1.2.1.cdf'
+;fnt ='rbsp-a_wna-survey_emfisis-L4_20140106_v1.2.2.cdf'
+
+cdf_leap_second_init
+cdf2tplot,file=pn+fnt
+
+get_data,'thsvd',data=thk,dlim=lim,lim=lim
+store_data,'thk',data={x:thk.x,y:thk.y,v:reform(thk.v)}
+options,'thk','spec',1
+
+tplot,'thk'
+;--------------------------------------------------------
+;; ;EMFISIS file with hiss spec
+;; pn = '~/Desktop/Research/RBSP_hiss_precip/emfisis_cdfs/'
+;; ;fnt = 'rbsp-a_WFR-spectral-matrix_emfisis-L2_20140103_v1.3.2.cdf'
+;; fnt = 'rbsp-a_WFR-spectral-matrix-diagonal_emfisis-L2_20140103_v1.3.2.cdf'
+;; ;fnt = 'rbsp-a_WFR-spectral-matrix_emfisis-L2_20140106_v1.3.4.cdf'
+;; cdf2tplot,file=pn+fnt
+;; get_data,'BwBw',data=dd
+;; store_data,'BwBw',data={x:dd.x,y:1000.*1000.*dd.y,v:reform(dd.v)}
+;; options,'BwBw','spec',1
+;; zlim,'BwBw',1d-6,100,1
+;; ylim,'BwBw',20,1000,1
+;-------------------------------------------------------
+;MAGEIS file
+pn = '~/Desktop/Research/RBSP_hiss_precip/mageis_cdfs/'
+fnt = 'rbspa_rel02_ect-mageis-L2_20140103_v3.0.0.cdf'
+;fnt = 'rbspa_rel02_ect-mageis-L2_20140106_v3.0.0.cdf'
+cdf2tplot,file=pn+fnt
+get_data,'FESA',data=dd
+store_data,'FESA',data={x:dd.x,y:dd.y,v:reform(dd.v[0,*])}
+get_data,'FESA',data=dd
+store_data,'fesa_2mev',data={x:dd.x,y:dd.y[*,21]}
+ylim,'fesa_2mev',0.02,100,1
+ylim,'FESA',30,4000,1
+tplot,'FESA'
+zlim,'FESA',0,1d5
+
+
+;-----------------------------------------------------------
+;Get BARREL coord
+
+
+;----------------
+;Jan 6th balloons
+
+path = '~/Desktop/Research/RBSP_hiss_precip/barrel_mapping/BARREL_RBSP_Kp1/'
+
+restore, path+"barrel_template.sav"
+myfile = path+"BAR_2K_mag.dat"
+data = read_ascii(myfile, template = res)
+tms = time_double('2014-01-06/00:00') + data.utsec
+store_data,'mlt_2K',data={x:tms,y:data.mlt}
+store_data,'l_2K',data={x:tms,y:abs(data.l)}
+
+restore, path+"barrel_template.sav"
+myfile = path+"BAR_2W_mag.dat"
+data = read_ascii(myfile, template = res)
+tms = time_double('2014-01-06/00:00') + data.utsec
+store_data,'mlt_2W',data={x:tms,y:data.mlt}
+store_data,'l_2W',data={x:tms,y:abs(data.l)}
+
+restore, path+"barrel_template.sav"
+myfile = path+"BAR_2L_mag.dat"
+data = read_ascii(myfile, template = res)
+tms = time_double('2014-01-06/00:00') + data.utsec
+store_data,'mlt_2L',data={x:tms,y:data.mlt}
+store_data,'l_2L',data={x:tms,y:abs(data.l)}
+
+restore, path+"barrel_template.sav"
+myfile = path+"BAR_2X_mag.dat"
+data = read_ascii(myfile, template = res)
+tms = time_double('2014-01-06/00:00') + data.utsec
+store_data,'mlt_2X',data={x:tms,y:data.mlt}
+store_data,'l_2X',data={x:tms,y:abs(data.l)}
+
+
+
+
+
+;----------------
+;JAN 3RD BALLOONS
+
+path = '~/Desktop/Research/RBSP_hiss_precip/barrel_mapping/BARREL_RBSP_Kp3/'
+
+restore, path+"barrel_template.sav"
+myfile = path+"bar_2I_140103_mag.dat"
+data = read_ascii(myfile, template = res)
+tms = time_double('2014-01-03/00:00') + data.utsec
+store_data,'mlt_2I',data={x:tms,y:data.mlt}
+store_data,'l_2I',data={x:tms,y:abs(data.l)}
+
+
+restore, path+"barrel_template.sav"
+myfilew = path+"bar_2W_140103_mag.dat"
+dataw = read_ascii(myfilew, template = res)
+store_data,'mlt_2W',data={x:tms,y:dataw.mlt}
+store_data,'l_2W',data={x:tms,y:abs(dataw.l)}
+;----------------
+
+
+
+;---------------------------------------------------------------
+
+;; payloads = ['2I','2W']
+;; spinperiod = 11.8
+rbsp_load_barrel_lc,payloads,date,type='rcnt'
+;rbsp_load_barrel_lc,payloads,date,type='ephm'
+;rbsp_load_barrel_lc,payloads,date
+
+
+;Get rid of NaN values in the peak detector data. This messes up the downsampling
+get_data,'PeakDet_2I',data=dd
+goo = where(dd.y lt 0.)
+if goo[0] ne -1 then dd.y[goo] = !values.f_nan
+xv = dd.x
+yv = dd.y
+interp_gap,xv,yv
+store_data,'PeakDet_2I',data={x:xv,y:yv}
+options,'PeakDet_2I','colors',250
+
+get_data,'PeakDet_2W',data=dd
+goo = where(dd.y lt 0.)
+if goo[0] ne -1 then dd.y[goo] = !values.f_nan
+xv = dd.x
+yv = dd.y
+interp_gap,xv,yv
+store_data,'PeakDet_2W',data={x:xv,y:yv}
+options,'PeakDet_2W','colors',250
+
+;--------------------------------------------------
+
+
+
+
+rbspx = 'rbsp' + probe
+;; t0 = time_double('2014-01-06/18:00')
+;; t1 = time_double('2014-01-06/23:00')
+;; t0 = time_double('2014-01-03/17:30')
+;; t1 = time_double('2014-01-03/24:00')
+t0 = time_double('2013-01-26/09:45')
+t1 = time_double('2013-01-26/12:00')
+timespan, date
+
+
+rbsp_efw_init	
+!rbsp_efw.user_agent = ''
+tplot_options,'xmargin',[20.,15.]
+tplot_options,'ymargin',[3,6]
+tplot_options,'xticklen',0.08
+tplot_options,'yticklen',0.02
+tplot_options,'xthick',2
+tplot_options,'ythick',2
+tplot_options,'labflag',-1	
+	
+
+;rbsp_load_emfisis,probe=probe,/quicklook
+rbsp_load_emfisis,probe=probe,type='4sec',coord='gse'
+
+rbsp_load_efw_spec,probe=probe,type='calibrated',/pt
+
+rbsp_load_efw_waveform,probe=probe,type='calibrated',datatype='vsvy'
+rbsp_downsample,rbspx + '_efw_vsvy',1/spinperiod,/nochange	
+split_vec,rbspx + '_efw_vsvy', suffix='_V'+['1','2','3','4','5','6']
+get_data,rbspx + '_efw_vsvy_V1',data=v1
+get_data,rbspx + '_efw_vsvy_V2',data=v2
+sum12 = (v1.y + v2.y)/2.
+density = 7354.3897*exp(sum12*2.8454878)+96.123628*exp(sum12*0.43020781)
+store_data,'density'+probe,data={x:v1.x,y:density}
+ylim,'density?',100,1000,1
+options,'density'+probe,'ytitle','density'+strupcase(probe)+'!Ccm^-3'
+
+
+rbsp_detrend,'densitya',60.*30.
+;rbsp_detrend,'rbspa_emfisis_quicklook_Magnitude',60.*30.
+;rbsp_detrend,'densitya',60.*0.2
+;rbsp_detrend,'rbspa_emfisis_quicklook_Magnitude',60.*0.2
+
+;Integrate spec RMS amplitude
+trange = timerange()
+fcals = rbsp_efw_get_gain_results()
+fbinsL = fcals.cal_spec.freq_spec64L
+fbinsH = fcals.cal_spec.freq_spec64H
+bandw = fbinsH - fbinsL
+
+
+get_data,'rbsp'+probe+'_efw_64_spec2',data=bu2
+get_data,'rbsp'+probe+'_efw_64_spec3',data=bv2
+get_data,'rbsp'+probe+'_efw_64_spec4',data=bw2
+bu2.y[*,0:2] = 0.
+bv2.y[*,0:2] = 0.
+bw2.y[*,0:2] = 0.
+bu2.y[*,45:63] = 0.
+bv2.y[*,45:63] = 0.
+bw2.y[*,45:63] = 0.
+nelem = n_elements(bu2.x)
+bt = fltarr(nelem)
+;Add up amplitude in all 64 bins and multiply each bin by a bandwidth
+ball = bu2.y + bv2.y + bw2.y
+for j=0L,nelem-1 do bt[j] = sqrt(total(ball[j,*]*bandw))  ;RMS method (Malaspina's method)
+store_data,'Bfield_hissint',data={x:bu2.x,y:bt}
+tplot,'Bfield_hissint'
+
+
+
+
+tplot,['rbspa_efw_64_spec3','densitya_smoothed','rbspa_emfisis_quicklook_Magnitude_smoothed']
+
+
+;---------------------------------
+;get freq of max amp hiss
+get_data,'rbspa_efw_64_spec3',data=spec
+;delete non hiss bands
+spec.y[*,0:1] = 0.
+spec.y[*,40:63] = 0.
+freqm = fltarr(n_elements(spec.x))
+ampm = fltarr(n_elements(spec.x))
+
+for i=0L,n_elements(spec.x)-1 do begin $
+	tmp = max(spec.y[i,*],wh)	& $
+	freqm[i] = spec.v[wh]  & $
+	ampm[i] = sqrt(spec.y[i,wh])
+;---------------------------------
+
+
+;get min freq of hiss band
+freqbottom = fltarr(n_elements(spec.x))
+freqtop = fltarr(n_elements(spec.x))
+minampb = 1.4   ;min amp for lower hiss bound
+minampt = 0.1	;min amp for upper hiss bound
+;minampb = ampm/exp(1)^2
+;minampt = ampm/exp(1)^2
+
+for i=0L,n_elements(spec.x)-1 do begin $
+	goo = where(spec.y[i,*] ge minampb)  & $
+	if goo[0] ne -1 then freqbottom[i] = spec.v[goo[0]]   & $
+	goo = where(spec.y[i,*] ge minampt)  & $
+	if goo[0] ne -1 then freqtop[i] = spec.v[max(goo)]
+
+
+
+
+store_data,'freqmax',data={x:spec.x,y:freqm}
+store_data,'freqbottom',data={x:spec.x,y:freqbottom}
+store_data,'freqtop',data={x:spec.x,y:freqtop}
+options,['freqtop'],'colors',200
+options,['freqbottom'],'colors',250
+
+;rbsp_detrend,['freqmax','freqbottom','freqtop'],60.*0.9
+rbsp_detrend,['freqmax','freqbottom','freqtop'],60.*0.2
+
+
+
+;Remove values where this condition isn't true:   fbottom < fmax < ftop
+get_data,'freqmax_smoothed',data=fm
+get_data,'freqbottom_smoothed',data=fb
+get_data,'freqtop_smoothed',data=ft
+
+bad = where((fb.y gt fm.y) or (fb.y gt ft.y) or (fm.y gt ft.y) or (ft.y lt fb.y) or (ft.y lt fm.y) or (fm.y lt fb.y))
+
+fm.y[bad] = !values.f_nan
+ft.y[bad] = !values.f_nan
+fb.y[bad] = !values.f_nan
+ampm[bad] = !values.f_nan
+
+;remove very small amplitude values
+minampp = 0.8   ;just above noise floor
+bad = where(ampm lt minampp)
+fm.y[bad] = !values.f_nan
+ft.y[bad] = !values.f_nan
+fb.y[bad] = !values.f_nan
+ampm[bad] = !values.f_nan
+
+;Remove freqs that are too low
+bad = where(fb.y le 20.)
+fm.y[bad] = !values.f_nan
+ft.y[bad] = !values.f_nan
+fb.y[bad] = !values.f_nan
+ampm[bad] = !values.f_nan
+
+
+store_data,'amp_max',data={x:fm.x,y:ampm}
+store_data,'freqmax_smoothed',data={x:fm.x,y:fm.y}
+store_data,'freqbottom_smoothed',data={x:fm.x,y:fb.y}
+store_data,'freqtop_smoothed',data={x:fm.x,y:ft.y}
+
+store_data,'spec_max_smoothed',data=['rbspa_efw_64_spec3','freqmax_smoothed','freqbottom_smoothed','freqtop_smoothed']
+store_data,'spec_max',data=['rbspa_efw_64_spec3','freqmax','freqbottom','freqtop']
+options,'freqbottom_smoothed','colors',250
+options,'freqtop_smoothed','colors',200
+options,['freqmax_smoothed','freqbottom_smoothed','freqtop_smoothed'],'thick',3
+
+ylim,['spec_max','spec_max_smoothed'],10,1000,1
+zlim,['spec_max','spec_max_smoothed'],0.01,50,1
+tplot,'spec_max'
+
+
+
+
+;At this point everything is smoothed to the spinperiod, but need to put all data sets on the same cadence
+get_data,'rbspa_efw_64_spec3',data=spec
+tinterpol_mxn,'densitya_smoothed',spec.x,newname='densitya_smoothed2'
+tinterpol_mxn,'rbspa_emfisis_quicklook_Magnitude_smoothed',spec.x,newname='rbspa_emfisis_quicklook_Magnitude_smoothed2'
+tinterpol_mxn,'thk',spec.x,newname='thk2'
+
+
+zlim,['thk','thk2'],0,90
+
+
+
+get_data,'densitya_smoothed2',data=dens
+;get_data,'rbspa_emfisis_quicklook_Magnitude_smoothed2',data=mag
+get_data,'rbspa_emfisis_l3_4sec_gse_Magnitude',data=mag
+get_data,'thk2',data=thk
+get_data,'freqmax_smoothed',data=d
+freqm = d.y
+get_data,'freqbottom_smoothed',data=d
+freqbottom = d.y
+get_data,'freqtop_smoothed',data=d
+freqtop = d.y
+
+
+
+
+
+freq = freqm
+theta_k = fltarr(n_elements(freq))
+
+;Find the theta_kb value of the requested freq
+for i=0L,n_elements(freq)-1 do begin   $
+	goo = where(thk.v ge freq[i])   & $
+	if goo[0] ne -1 then theta_k[i] = thk.y[i,goo[0]] else theta_k[i] = 0.
+
+store_data,'theta_k_max',data={x:spec.x,y:theta_k}
+
+
+	c_ms      = 2.99792458d8      ; -Speed of light in vacuum (m/s)	
+	pa = 0.  ;test pitch angle in deg
+	;theta_k = 0.0  ;wave normal angle
+	fce = 28.*mag.y
+	fpe = 8980*sqrt(dens.y)
+	c=3d8
+
+
+	kvec = sqrt(4*!pi^2*fpe^2*freq/(c^2*(fce*cos(theta_k*!dtor)-freq)))
+	;kvec = 1./1000.   ;1/m
+	
+	kz = abs((kvec)*cos(theta_k*!dtor))
+	
+
+	Etots_cycl = fltarr(n_elements(spec.x))
+	Etots_anom = fltarr(n_elements(spec.x))
+	Etots_landau = fltarr(n_elements(spec.x))
+	Ez_cycl = fltarr(n_elements(spec.x))
+	Ez_anom = fltarr(n_elements(spec.x))
+	Ez_landau = fltarr(n_elements(spec.x))
+
+
+for q=0,n_elements(freq) - 1 do begin    $
+	vz = indgen(10000)*c/9999. * cos(pa*!dtor)    & $
+	gama = 1/sqrt(1-(vz/c/cos(pa*!dtor))^2)    & $ ;relativistic gamma factor
+	f1cycl = vz   & $
+	f2cycl = (2*!pi/kz[q])*(1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1cycl-f2cycl)  & $
+	tmp = min(diff,val)  & $
+	vz_cycl = vz[val]     & $;m/s
+	vtots_cycl = vz_cycl/cos(pa*!dtor)   & $ ;electron velocity
+	vc_ratio_cycl = vtots_cycl/c  & $
+	if vc_ratio_cycl ge 0.1 then relativistic_cycl = 'yes' else relativistic_cycl = 'no'  & $
+	f1anom = -1*vz  & $
+	f2anom = (2*!pi/kz[q])*(-1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1anom-f2anom)  & $
+	tmp = min(diff,val)  & $
+	vz_anom = vz[val]     & $;m/s
+	vtots_anom = vz_anom/cos(pa*!dtor)   & $ ;ion velocity
+	vc_ratio_anom = vtots_anom/c  & $
+	if vc_ratio_anom ge 0.1 then relativistic_anom = 'yes' else relativistic_anom = 'no'  & $
+	vz_landau = 2*!pi*freq[q]/kz[q]  & $
+	vtots_landau = vz_landau/cos(pa*!dtor)  & $
+	vc_ratio_landau = vtots_landau/c  & $
+	if vc_ratio_landau ge 0.1 then relativistic_landau = 'yes' else relativistic_landau = 'no'  & $
+	Etots_cycl[q] = 0.511d6/sqrt(1-(vtots_cycl^2/c^2)) - 0.511d6  & $
+	Etots_anom[q] = 0.511d6/sqrt(1-(vtots_anom^2/c^2)) - 0.511d6  & $
+	Etots_landau[q] = 0.511d6/sqrt(1-(vtots_landau^2/c^2)) - 0.511d6  & $
+	Ez_cycl[q] = 0.511d6/sqrt(1-(vz_cycl^2/c^2)) - 0.511d6  & $
+	Ez_anom[q] = 0.511d6/sqrt(1-(vz_anom^2/c^2)) - 0.511d6  & $
+	Ez_landau[q] = 0.511d6/sqrt(1-(vz_landau^2/c^2)) - 0.511d6
+	 
+store_data,'E_cycl',data={x:spec.x,y:Etots_cycl/1000.}
+store_data,'Ez_cycl',data={x:spec.x,y:Ez_cycl/1000.}
+
+
+;*************************
+
+	freq = freqbottom
+	theta_k = fltarr(n_elements(freq))
+
+	;Find the theta_kb value of the requested freq
+	for i=0L,n_elements(freq)-1 do begin   $
+		goo = where(thk.v ge freq[i])   & $
+		if goo[0] ne -1 then theta_k[i] = thk.y[i,goo[0]] else theta_k[i] = 0.
+
+	store_data,'theta_k_bottom',data={x:spec.x,y:theta_k}
+
+	kvec = sqrt(4*!pi^2*fpe^2*freq/(c^2*(fce*cos(theta_k*!dtor)-freq)))
+	;kvec = 1./1000.   ;1/m
+	
+	kz = abs((kvec)*cos(theta_k*!dtor))
+	
+
+	Etots_cycl = fltarr(n_elements(spec.x))
+	Etots_anom = fltarr(n_elements(spec.x))
+	Etots_landau = fltarr(n_elements(spec.x))
+	Ez_cycl = fltarr(n_elements(spec.x))
+	Ez_anom = fltarr(n_elements(spec.x))
+	Ez_landau = fltarr(n_elements(spec.x))
+
+
+for q=0,n_elements(freq) - 1 do begin    $
+	vz = indgen(10000)*c/9999. * cos(pa*!dtor)    & $
+	gama = 1/sqrt(1-(vz/c/cos(pa*!dtor))^2)    & $ ;relativistic gamma factor
+	f1cycl = vz   & $
+	f2cycl = (2*!pi/kz[q])*(1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1cycl-f2cycl)  & $
+	tmp = min(diff,val)  & $
+	vz_cycl = vz[val]     & $;m/s
+	vtots_cycl = vz_cycl/cos(pa*!dtor)   & $ ;electron velocity
+	vc_ratio_cycl = vtots_cycl/c  & $
+	if vc_ratio_cycl ge 0.1 then relativistic_cycl = 'yes' else relativistic_cycl = 'no'  & $
+	f1anom = -1*vz  & $
+	f2anom = (2*!pi/kz[q])*(-1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1anom-f2anom)  & $
+	tmp = min(diff,val)  & $
+	vz_anom = vz[val]     & $;m/s
+	vtots_anom = vz_anom/cos(pa*!dtor)   & $ ;ion velocity
+	vc_ratio_anom = vtots_anom/c  & $
+	if vc_ratio_anom ge 0.1 then relativistic_anom = 'yes' else relativistic_anom = 'no'  & $
+	vz_landau = 2*!pi*freq[q]/kz[q]  & $
+	vtots_landau = vz_landau/cos(pa*!dtor)  & $
+	vc_ratio_landau = vtots_landau/c  & $
+	if vc_ratio_landau ge 0.1 then relativistic_landau = 'yes' else relativistic_landau = 'no'  & $
+	Etots_cycl[q] = 0.511d6/sqrt(1-(vtots_cycl^2/c^2)) - 0.511d6  & $
+	Etots_anom[q] = 0.511d6/sqrt(1-(vtots_anom^2/c^2)) - 0.511d6  & $
+	Etots_landau[q] = 0.511d6/sqrt(1-(vtots_landau^2/c^2)) - 0.511d6  & $
+	Ez_cycl[q] = 0.511d6/sqrt(1-(vz_cycl^2/c^2)) - 0.511d6  & $
+	Ez_anom[q] = 0.511d6/sqrt(1-(vz_anom^2/c^2)) - 0.511d6  & $
+	Ez_landau[q] = 0.511d6/sqrt(1-(vz_landau^2/c^2)) - 0.511d6
+	 
+store_data,'E_cycl_bottom',data={x:spec.x,y:Etots_cycl/1000.}
+store_data,'Ez_cycl_bottom',data={x:spec.x,y:Ez_cycl/1000.}
+
+;*************************
+
+	freq = freqtop
+	theta_k = fltarr(n_elements(freq))
+
+	;Find the theta_kb value of the requested freq
+	for i=0L,n_elements(freq)-1 do begin   $
+		goo = where(thk.v ge freq[i])   & $
+		if goo[0] ne -1 then theta_k[i] = thk.y[i,goo[0]] else theta_k[i] = 0.
+
+	store_data,'theta_k_top',data={x:spec.x,y:theta_k}
+
+	kvec = sqrt(4*!pi^2*fpe^2*freq/(c^2*(fce*cos(theta_k*!dtor)-freq)))
+	;kvec = 1./1000.   ;1/m
+	
+	kz = abs((kvec)*cos(theta_k*!dtor))
+	
+
+	Etots_cycl = fltarr(n_elements(spec.x))
+	Etots_anom = fltarr(n_elements(spec.x))
+	Etots_landau = fltarr(n_elements(spec.x))
+	Ez_cycl = fltarr(n_elements(spec.x))
+	Ez_anom = fltarr(n_elements(spec.x))
+	Ez_landau = fltarr(n_elements(spec.x))
+
+
+for q=0,n_elements(freq) - 1 do begin    $
+	vz = indgen(10000)*c/9999. * cos(pa*!dtor)    & $
+	gama = 1/sqrt(1-(vz/c/cos(pa*!dtor))^2)    & $ ;relativistic gamma factor
+	f1cycl = vz   & $
+	f2cycl = (2*!pi/kz[q])*(1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1cycl-f2cycl)  & $
+	tmp = min(diff,val)  & $
+	vz_cycl = vz[val]     & $;m/s
+	vtots_cycl = vz_cycl/cos(pa*!dtor)   & $ ;electron velocity
+	vc_ratio_cycl = vtots_cycl/c  & $
+	if vc_ratio_cycl ge 0.1 then relativistic_cycl = 'yes' else relativistic_cycl = 'no'  & $
+	f1anom = -1*vz  & $
+	f2anom = (2*!pi/kz[q])*(-1*fce[q]/gama - freq[q])  & $
+	diff = abs(f1anom-f2anom)  & $
+	tmp = min(diff,val)  & $
+	vz_anom = vz[val]     & $;m/s
+	vtots_anom = vz_anom/cos(pa*!dtor)   & $ ;ion velocity
+	vc_ratio_anom = vtots_anom/c  & $
+	if vc_ratio_anom ge 0.1 then relativistic_anom = 'yes' else relativistic_anom = 'no'  & $
+	vz_landau = 2*!pi*freq[q]/kz[q]  & $
+	vtots_landau = vz_landau/cos(pa*!dtor)  & $
+	vc_ratio_landau = vtots_landau/c  & $
+	if vc_ratio_landau ge 0.1 then relativistic_landau = 'yes' else relativistic_landau = 'no'  & $
+	Etots_cycl[q] = 0.511d6/sqrt(1-(vtots_cycl^2/c^2)) - 0.511d6  & $
+	Etots_anom[q] = 0.511d6/sqrt(1-(vtots_anom^2/c^2)) - 0.511d6  & $
+	Etots_landau[q] = 0.511d6/sqrt(1-(vtots_landau^2/c^2)) - 0.511d6  & $
+	Ez_cycl[q] = 0.511d6/sqrt(1-(vz_cycl^2/c^2)) - 0.511d6  & $
+	Ez_anom[q] = 0.511d6/sqrt(1-(vz_anom^2/c^2)) - 0.511d6  & $
+	Ez_landau[q] = 0.511d6/sqrt(1-(vz_landau^2/c^2)) - 0.511d6
+	 
+store_data,'E_cycl_top',data={x:spec.x,y:Etots_cycl/1000.}
+store_data,'Ez_cycl_top',data={x:spec.x,y:Ez_cycl/1000.}
+
+;--------------------
+
+
+;Re-NAN values that have been interpolated
+get_data,'freqmax_smoothed',data=ff
+goo = where(finite(ff.y) eq 0.)
+freqtop[goo] = !values.f_nan
+freqbottom[goo] = !values.f_nan
+freqm[goo] = !values.f_nan
+get_data,'E_cycl_bottom',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'E_cycl_bottom',data=ff
+get_data,'E_cycl_top',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'E_cycl_top',data=ff
+get_data,'E_cycl',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'E_cycl',data=ff
+get_data,'Bfield_hissint',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'Bfield_hissint',data=ff
+get_data,'amp_max',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'amp_max',data=ff
+
+
+get_data,'theta_k_bottom',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'theta_k_bottom',data=ff
+get_data,'theta_k_top',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'theta_k_top',data=ff
+get_data,'theta_k_max',data=ff
+ff.y[goo] = !values.f_nan
+store_data,'theta_k_max',data=ff
+
+
+store_data,'thk2_comb',data=['thk2','freqmax_smoothed','freqbottom_smoothed','freqtop_smoothed']
+options,'freqbottom_smoothed','colors',250
+options,'freqtop_smoothed','colors',200
+options,['freqmax_smoothed','freqbottom_smoothed','freqtop_smoothed'],'thick',3
+
+
+
+store_data,'hiss_bandwidth',data={x:spec.x,y:(abs(freqtop-freqbottom))}
+store_data,'hiss_bandwidth2',data={x:spec.x,y:(abs(freqm-freqbottom))}
+
+
+
+;slightly values for a pretty plot. They're very noisy
+rbsp_detrend,['theta_k_bottom','theta_k_top','theta_k_max','hiss_bandwidth'],60.*1  ;0.2
+store_data,'theta_kb_all_smoothed',data=['theta_k_bottom_smoothed','theta_k_top_smoothed','theta_k_max_smoothed']
+store_data,'theta_kb_all',data=['theta_k_bottom','theta_k_top','theta_k_max']
+options,['theta_kb_all_smoothed'],'colors',[250,200,0]
+options,['theta_kb_all'],'colors',[250,200,0]
+
+rbsp_detrend,['E_cycl_bottom','E_cycl_top','E_cycl'],60.*1  ;0.2
+store_data,'E_cycl_comb_smoothed',data=['E_cycl_bottom_smoothed','E_cycl_top_smoothed','E_cycl_smoothed']
+store_data,'E_cycl_comb',data=['E_cycl_bottom','E_cycl_top','E_cycl']
+options,['E_cycl_comb_smoothed'],'colors',[250,200,0]
+options,['E_cycl_comb'],'colors',[250,200,0]
+
+
+ylim,['E_cycl_comb','E_cycl_comb_smoothed'],1,1000,1
+ylim,['spec_max','spec_max_smoothed'],10,600,1
+ylim,'thk2_comb',10,600,1
+zlim,['spec_max','spec_max_smoothed'],0.1,50,1
+ylim,'spec_max_smoothed',1,600,1
+
+options,['hiss_bandwidth_smoothed','theta_kb_all_smoothed','E_cycl_comb_smoothed'],'panel_size',0.7
+
+;tplot,['E_cycl_comb','spec_max','hiss_bandwidth','densitya_smoothed','rbspa_emfisis_quicklook_Magnitude_smoothed']
+;tplot,['spec_max','thk2_comb','E_cycl_comb','hiss_bandwidth','theta_kb_all','dn_n','densitya_smoothed2','rbspa_emfisis_quicklook_Magnitude_smoothed2']
+tplot,['spec_max_smoothed','hiss_bandwidth_smoothed','thk2_comb','theta_kb_all_smoothed','E_cycl_comb_smoothed']
+
+
+
+stop
+
+
+
+;---------------------------------------------------------
+;Create a plot of MagEIS flux vs Lshell
+
+fesa2 = tsample('FESA',[t0,t1],times=fesatms)
+l2 = tsample('L',[t0,t1],times=ltms)
+l2i2 = tsample('l_2I',[t0,t1],times=l2itms)
+l2w2 = tsample('l_2W',[t0,t1],times=l2wtms)
+l2k2 = tsample('l_2K',[t0,t1],times=l2ktms)
+l2x2 = tsample('l_2X',[t0,t1],times=l2xtms)
+l2l2 = tsample('l_2L',[t0,t1],times=l2ltms)
+
+
+
+
+get_data,'FESA',data=fesa
+;get_data,'L',data=L
+;get_data,'l_2I',data=l2i
+;get_data,'l_2W',data=l2w
+ytmp = replicate(1d4,n_elements(l2w2))
+ytmp2 = replicate(1d1,n_elements(l2w2))
+
+
+
+tinterpol_mxn,'rbspa_state_lshell','E_cycl_smoothed'
+tinterpol_mxn,'PeakDet_2I','E_cycl_smoothed'
+ecycl2 = tsample('E_cycl_smoothed',[t0,t1],times=ecycltms)
+ecycl2b = tsample('E_cycl_bottom_smoothed',[t0,t1],times=ecyclbtms)
+ecycl2t = tsample('E_cycl_top_smoothed',[t0,t1],times=ecyclttms)
+
+lshell2 = tsample('rbspa_state_lshell_interp',[t0,t1],times=lshelltms)
+
+peak2i2 = tsample('PeakDet_2I_interp',[t0,t1],times=peaktms)
+peak2w2 = tsample('PeakDet_2W_interp',[t0,t1],times=peaktms)
+peak2k2 = tsample('PeakDet_2K_interp',[t0,t1],times=peaktms)
+peak2x2 = tsample('PeakDet_2X_interp',[t0,t1],times=peaktms)
+peak2l2 = tsample('PeakDet_2L_interp',[t0,t1],times=peaktms)
+
+
+
+
+
+
+
+;Energies plotted
+print,fesa.v[3],fesa.v[5],fesa.v[8],fesa.v[11],fesa.v[14],fesa.v[17],fesa.v[20],fesa.v[23]
+
+!p.multi = [0,0,2]
+plot,l2,fesa2[*,3],/ylog,xrange=[3,7],xstyle=1,yrange=[0.1,400000],title='all energies MagEIS e- (cycl_res_energy_hiss.pro)',xtitle='Lshell',ytitle='MagEIS flux',color=10
+oplot,l2,fesa2[*,5],color=40
+oplot,l2,fesa2[*,8],color=80
+oplot,l2,fesa2[*,11],color=120
+oplot,l2,fesa2[*,14],color=160
+oplot,l2,fesa2[*,17],color=200
+oplot,l2,fesa2[*,20],color=220
+oplot,l2,fesa2[*,23],color=250
+oplot,l2i2,ytmp,color=250,thick=3
+oplot,l2w2,ytmp,color=50,thick=3
+oplot,l2k2,ytmp,color=100,thick=3
+oplot,l2x2,ytmp,color=150,thick=3
+oplot,l2l2,ytmp,color=200,thick=3
+
+plot,lshell2,ecycl2,/ylog,xrange=[3,6],xstyle=1,yrange=[1,10000],title='Ecycl n=1 res energy',ytitle='keV',xtitle='Lshell'
+oplot,lshell2,ecycl2b,color=250
+oplot,lshell2,ecycl2t,color=200
+
+;Jan 3rd
+ylim,'PeakDet_2I',0,16000.
+ylim,'PeakDet_2W',0,16000.
+
+;Jan 6th
+ylim,'PeakDet_2W',4000,7000
+ylim,'PeakDet_2K',3000,5000
+ylim,'PeakDet_2L',2000,10000
+
+tplot,['PeakDet_2K','PeakDet_2W','PeakDet_2L','PeakDet_2X']
+
+
+;------------------------------------------
+;Make low res versions of other variables
+;------------------------------------------
+rbsp_detrend,['freqmax_smoothed','freqtop_smoothed','freqbottom_smoothed','Bfield_hissint','amp_max'],60.*15.
+tplot,['Bfield_hissint','Bfield_hissint_smoothed']
+tplot,['freqmax_smoothed','freqtop_smoothed','freqbottom_smoothed','Bfield_hissint','amp_max'] + '_smoothed'
+
+
+;----------------------------
+;TEST VALUES BEFORE SENDING
+;----------------------------
+
+tplot,['rbspa_emfisis_quicklook_Magnitude_smoothed','densitya','freqtop_smoothed','freqbottom_smoothed','freqmax_smoothed','Bfield_hissint','amp_max']
+tlimit,t0,t1
+
+;rbsp_detrend,['rbspa_emfisis_quicklook_Magnitude_smoothed2','densitya_smoothed2'],60.*5.
+;tplot,['rbspa_emfisis_quicklook_Magnitude_smoothed2_detrend','densitya_smoothed2_detrend','freqtop_smoothed']
+stop
+
+
+;-------------------------------------------------------------------------------
+;Save data for Alexa
+
+;rbsp_detrend,'rbspa_emfisis_quicklook_Magnitude',60.*0.2
+;rbsp_detrend,'rbspa_emfisis_l3_4sec_gse_Magnitude',60.*0.2
+;tplot,['rbspa_emfisis_quicklook_Magnitude_smoothed2','rbspa_emfisis_quicklook_Magnitude_smoothed']
+
+
+freqtop = tsample('freqtop_smoothed',[t0,t1],times=freqtopt)
+freqbottom = tsample('freqbottom_smoothed',[t0,t1],times=freqbottomt)
+freqmax = tsample('freqmax_smoothed',[t0,t1],times=freqmaxt)
+amp_rms_nt = tsample('Bfield_hissint',[t0,t1],times=amp_rms_nTt)
+amp_max_nt = tsample('amp_max',[t0,t1],times=amp_max_nTt)
+
+tinterpol_mxn,'densitya',freqtopt
+tinterpol_mxn,'rbspa_emfisis_l3_4sec_gse_Magnitude',freqtopt
+mag = tsample('rbspa_emfisis_l3_4sec_gse_Magnitude_interp',[t0,t1],times=magt)
+dens = tsample('densitya_interp',[t0,t1],times=denst)
+
+tplot,['densita_interp','rbspa_emfisis_l3_4sec_gse_Magnitude_interp',$
+       'freqtop_smoothed','freqbottom_smoothed','freqmax_smoothed',$
+       'Bfield_hissint','amp_max']
+
+;freqtop = tsample('freqtop_smoothed_smoothed',[t0,t1],times=freqtopt)
+;freqbottom = tsample('freqbottom_smoothed_smoothed',[t0,t1],times=freqbottomt)
+;freqmax = tsample('freqmax_smoothed_smoothed',[t0,t1],times=freqmaxt)
+;amp_rms_nt = tsample('Bfield_hissint_smoothed',[t0,t1],times=amp_rms_nTt)
+;amp_max_nt = tsample('amp_max_smoothed',[t0,t1],times=amp_max_nTt)
+
+;; save,mag,magt,dens,denst,freqtop,freqtopt,freqbottom,freqbottomt,freqmax,freqmaxt,amp_rms_nT,amp_rms_nTt,amp_max_nt,amp_max_nTt,filename='~/Desktop/Jan6_vals_for_alexa_1800-2300.idl'
+save,mag,magt,dens,denst,freqtop,freqtopt,freqbottom,freqbottomt,freqmax,freqmaxt,amp_rms_nT,amp_rms_nTt,amp_max_nt,amp_max_nTt,filename='~/Desktop/Jan3_vals_for_alexa_1730-2400.idl'
+
+
+;------------------------------------------
+;RESTORE AND TEST
+;-----------------------------------------
+
+restore,'~/Desktop/Jan3_vals_for_alexa_1730-2400.idl'
+store_data,'bmag_30m',data={x:magt,y:mag}
+store_data,'dens_30m',data={x:denst,y:dens}
+store_data,'freqtop_30m',data={x:freqtopt,y:freqtop}
+store_data,'freqbottom_30m',data={x:freqtopt,y:freqbottom}
+store_data,'freqmax_30m',data={x:freqtopt,y:freqmax}
+store_data,'amp_rms_nt_30m',data={x:amp_rms_ntt,y:amp_rms_nt}
+store_data,'amp_max_nt_30m',data={x:amp_max_ntt,y:amp_max_nt}
+
+;restore,'~/Desktop/Jan6_vals_for_alexa_15min_resolution.idl'
+;store_data,'bmag_15m',data={x:magt,y:mag}
+;store_data,'dens_15m',data={x:denst,y:dens}
+restore,'~/Desktop/Jan6_vals_for_alexa_12s_resolution.idl'
+store_data,'bmag_12s',data={x:magt,y:mag}
+store_data,'dens_12s',data={x:denst,y:dens}
+store_data,'freqtop_12s',data={x:freqtopt,y:freqtop}
+store_data,'freqbottom_12s',data={x:freqtopt,y:freqbottom}
+store_data,'freqmax_12s',data={x:freqtopt,y:freqmax}
+store_data,'amp_rms_nt_12s',data={x:amp_rms_ntt,y:amp_rms_nt}
+store_data,'amp_max_nt_12s',data={x:amp_max_ntt,y:amp_max_nt}
+
+tplot_options,'title','Various smoothing values for Alexas diffusion code'
+
+
+rbsp_detrend,['bmag_30m','bmag_12s'],60.*0.9
+ylim,['bmag_30m','bmag_12s'] + '_detrend',-0.3,0.3
+tplot,['bmag_30m','bmag_12s','bmag_30m_detrend','bmag_12s_detrend']
+
+rbsp_detrend,['dens_30m','dens_12s'],60.*5
+ylim,['dens_30m','dens_12s'] + '_detrend',-30,30
+tplot,['dens_30m','dens_12s','dens_30m_detrend','dens_12s_detrend']
+
+
+store_data,'freqtops',data=['freqtop_30m','freqtop_12s']
+store_data,'freqbottoms',data=['freqbottom_30m','freqbottom_12s']
+store_data,'freqmaxs',data=['freqmax_30m','freqmax_12s']
+options,'freqtops','colors',[0,250]
+options,'freqbottoms','colors',[0,250]
+options,'freqmaxs','colors',[0,250]
+
+ylim,['freqtops','freqmaxs','freqbottoms'],0,400
+tplot,['freqtops','freqmaxs','freqbottoms']
+
+
+store_data,'amprms',data=['amp_rms_nt_30m','amp_rms_nt_12s']
+store_data,'ampmax',data=['amp_max_nt_30m','amp_max_nt_12s']
+options,'amprms','colors',[0,250]
+options,'ampmax','colors',[0,250]
+
+tplot,['amprms','ampmax']
+
+
+
+;----------------------------------------------------------------
+
+
+rbsp_detrend,'rbspa_emfisis_quicklook_Magnitude',60.*0.2
+rbsp_detrend,'rbspa_emfisis_quicklook_Magnitude_smoothed',60.*5
+
+tplot,['Bfield_hissint','PeakDet_2K_smoothed','densitya','rbspa_emfisis_quicklook_Magnitude']
+
+
+tplot,['Bfield_hissint','PeakDet_2K_smoothed','densitya_detrend','rbspa_emfisis_quicklook_Magnitude_smoothed_detrend']
+
+tinterpol_mxn,'PeakDet_2K_smoothed','Bfield_hissint'
+tinterpol_mxn,'densitya_detrend','Bfield_hissint'
+tinterpol_mxn,'rbspa_emfisis_quicklook_Magnitude_smoothed_detrend','Bfield_hissint'
+
+x = tsample('Bfield_hissint',[t0,t1],times=tms)
+store_data,'Bfield_hissint0',data={x:tms,y:x}
+x = tsample('PeakDet_2K_smoothed',[t0,t1],times=tms)
+store_data,'PeakDet_2K_smoothed0',data={x:tms,y:x}
+x = tsample('densitya_detrend',[t0,t1],times=tms)
+store_data,'densitya_detrend0',data={x:tms,y:x}
+x = tsample('rbspa_emfisis_quicklook_Magnitude_smoothed_detrend',[t0,t1],times=tms)
+store_data,'rbspa_emfisis_quicklook_Magnitude_smoothed_detrend0',data={x:tms,y:x}
+
+;Get rid of NaN values in the peak detector data. This messes up the downsampling
+get_data,'PeakDet_2K_smoothed0',data=dd
+goo = where(dd.y lt 0.)
+if goo[0] ne -1 then dd.y[goo] = !values.f_nan
+xv = dd.x
+yv = dd.y
+interp_gap,xv,yv
+store_data,'PeakDet_2K_smoothed0',data={x:xv,y:yv}
+
+
+
+
+
+
+get_data,'Bfield_hissint0',data=dd
+store_data,'Bfield_hissint0',data={x:dd.x,y:dd.y/max(abs(dd.y))}
+get_data,'PeakDet_2K_smoothed0',data=dd
+store_data,'PeakDet_2K_smoothed0',data={x:dd.x,y:dd.y/max(abs(dd.y))}
+get_data,'densitya_detrend0',data=dd
+store_data,'densitya_detrend0',data={x:dd.x,y:dd.y/max(abs(dd.y))}
+get_data,'rbspa_emfisis_quicklook_Magnitude_smoothed_detrend0',data=dd
+store_data,'rbspa_emfisis_quicklook_Magnitude_smoothed_detrend0',data={x:dd.x,y:dd.y/max(abs(dd.y))}
+
+
+tplot,['Bfield_hissint0','PeakDet_2K_smoothed0','densitya_detrend0','rbspa_emfisis_quicklook_Magnitude_smoothed_detrend0']
+
+tplot,['Bfield_hissint','PeakDet_2K_smoothed','densitya','rbspa_emfisis_quicklook_Magnitude']
+
+
+

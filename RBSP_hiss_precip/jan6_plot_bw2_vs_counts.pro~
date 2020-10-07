@@ -1,0 +1,141 @@
+
+
+tinterpol_mxn,'2K_avebounce50','PeakDet_2K_interp'
+
+x = tsample('2K_avebounce50_interp',[t0,t1],times=tms)
+store_data,'Daa',data={x:tms,y:x}
+
+get_data,'Daa',data=daa
+
+!p.charsize = 1.5
+!p.multi = [0,0,3]
+plot,pk.y-3500.,b1.y,psym=4,ytitle='Bw (pT)',xtitle='PeakDet2K_counts',/ylog,xrange=[0,1500],yrange=[1,300],ystyle=1
+plot,pk.y-3500.,b2.y,psym=4,ytitle='Bw^2 (pT^2)',xtitle='PeakDet2K_counts',/ylog,xrange=[0,1500]
+plot,pk.y-3500.,daa.y,psym=4,ytitle='<Daa>',xtitle='PeakDet2K_counts',/ylog,yrange=[1d-8,1d-2],xrange=[0,1500]
+
+
+
+!p.charsize = 1.5
+!p.multi = [0,0,3]
+plot,pk.y-3500.,b1.y,psym=4,ytitle='Bw (pT)',xtitle='PeakDet2K_counts',xrange=[0,1500],yrange=[0,150],ystyle=1
+plot,pk.y-3500.,b2.y,psym=4,ytitle='Bw^2 (pT^2)',xtitle='PeakDet2K_counts',xrange=[0,1500]
+plot,pk.y-3500.,daa.y,psym=4,ytitle='<Daa>',xtitle='PeakDet2K_counts',xrange=[0,1500],yrange=[0,0.0005]
+
+
+
+;Smooth values
+
+rbsp_detrend,'B1',60.*15.
+
+tplot,['B1_smoothed','B1']
+store_data,'Bcomb',data=['B1_smoothed','B1']
+
+rbsp_detrend,'PeakDet_2K_interp',60.*15.
+store_data,'2Kcomb',data=['PeakDet_2K_interp_smoothed','PeakDet_2K_interp']
+
+tplot,['Bcomb','2Kcomb']
+
+
+tplot,['B1_detrend','PeakDet_2K_interp_detrend']
+
+get_data,'B1_detrend',data=b1d
+goo = where(b1d.y lt 0.)
+b1d.y[goo] = !values.f_nan
+;store_data,'B1_detrend2',data={x:b1d.x,y:sqrt(b1d.y^2)}
+store_data,'B1_detrend2',data={x:b1d.x,y:b1d.y}
+store_data,'B2_detrend2',data={x:b1d.x,y:b1d.y^2}
+
+get_data,'PeakDet_2K_interp_detrend',data=pk
+goo = where(pk.y lt 0.)
+pk.y[goo] = !values.f_nan
+;store_data,'PeakDet_2K_interp_detrend2',data={x:pk.x,y:sqrt(pk.y^2)}
+store_data,'PeakDet_2K_interp_detrend2',data={x:pk.x,y:pk.y}
+
+rbsp_detrend,'Daa',60.*15.
+store_data,'Dcomb',data=['Daa_smoothed','Daa']
+tplot,'Dcomb'
+
+get_data,'Daa_detrend',data=d
+goo = where(d.y lt 0.)
+d.y[goo] = !values.f_nan
+;store_data,'Daa_detrend2',data={x:d.x,y:sqrt(d.y^2)}
+store_data,'Daa_detrend2',data={x:d.x,y:d.y}
+
+options,'PeakDet_2K_interp_detrend2','colors',250
+tplot,['PeakDet_2K_interp_detrend2','B1_detrend2','B2_detrend2','Daa_detrend2']
+
+get_data,'B1_detrend2',data=b12
+get_data,'B2_detrend2',data=b22
+get_data,'PeakDet_2K_interp_detrend2',data=pk2
+get_data,'Daa_detrend2',data=daa2
+
+
+
+!p.charsize = 1.5
+!p.multi = [0,0,3]
+plot,pk2.y,b12.y,psym=4,ytitle='Bw fluctuations (pT)',xtitle='PeakDet2K_count fluctuations',xrange=[0,1000],yrange=[0,80]
+plot,pk2.y,b22.y,psym=4,ytitle='Bw^2 fluctuations (pT^2)',xtitle='PeakDet2K_count fluctuations',xrange=[0,1000],yrange=[0,5000]
+plot,pk2.y,daa2.y,psym=4,ytitle='<Daa> fluctuations',xtitle='PeakDet2K_count fluctuations',xrange=[0,1000],yrange=[0,0.0003]
+
+
+options,'PeakDet_2K_interp_detrend2','ytitle','xray counts!C2K!Cdetrend'
+options,'B1_detrend2','ytitle','Bfield RMS amp!Cdetrend'
+options,'B2_detrend2','ytitle','Bfield^2!Cdetrend'
+options,'Daa_detrend2','ytitle','<Daa>50 keV'
+
+tplot_options,'title','Hiss/xray fluctuation comparison'
+
+
+store_data,'B1n',data={x:b12.x,y:b12.y/max(b12.y)}
+store_data,'B2n',data={x:b22.x,y:b22.y/max(b22.y)}
+store_data,'pkn',data={x:pk2.x,y:pk2.y/max(pk2.y)}
+store_data,'daan',data={x:daa2.x,y:daa2.y/max(daa2.y)}
+
+
+ylim,['B1n','B2n','pkn','daan'],0,1
+tplot,['pkn','B1n','B2n','daan']
+
+store_data,'b1p',data=['B1n','pkn']
+store_data,'b2p',data=['B2n','pkn']
+store_data,'daap',data=['daan','pkn']
+options,'b1p','ytitle','Bfield RMS amp!Cand xray counts(red)!Cdetrend and normalized'
+options,'b2p','ytitle','Bfield^2!Cand xray counts(red)!Cdetrend and normalized'
+options,'daap','ytitle','<Daa>50keV!Cand xray counts(red)!Cdetrend and normalized'
+
+
+;normalized version
+tplot,['b1p','b2p','daap']
+;unnormalized version
+
+
+tplot,['PeakDet_2K_interp_detrend2','B1_detrend2','B2_detrend2','Daa_detrend2']
+
+get_data,'PeakDet_2K_interp_detrend2',data=pk2
+get_data,'B1_detrend2',data=b12
+get_data,'B2_detrend2',data=b22
+
+plot,pk2.y,b12.y
+plot,pk2.y,b22.y
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

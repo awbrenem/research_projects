@@ -1,0 +1,83 @@
+;Combine RBSP RMS hiss or chorus values for multiple days into a single tplot file.
+
+;type = 'Bw' or 'Ew'  for magnetic or electric field spectra
+
+pro combine_rbsp_data,probe,dates,type
+
+  n = n_elements(dates)
+
+
+  fcals = rbsp_efw_get_gain_results()
+  fbinsL = fcals.cal_spec.freq_spec64L
+  fbinsH = fcals.cal_spec.freq_spec64H
+  bandw = fbinsH - fbinsL
+
+
+
+
+  data = [0.]
+  tms = [0d]
+
+                                ;Load and store RBSP spectral data
+  for i=0,n-1 do begin
+     timespan,dates[i]
+     rbsp_load_efw_spec,probe=probe,type='calibrated'
+
+     if type eq 'Ew' then begin
+        get_data,'rbsp'+probe+'_efw_64_spec0',data=bu2
+        bu2.y[*,0:31] = 0.      ;remove up to 500 Hz
+        nelem = n_elements(bu2.x)
+        bt = fltarr(nelem)
+        ball = bu2.y                        
+        for j=0L,nelem-1 do bt[j] = sqrt(total(ball[j,*]*bandw))
+
+        if is_struct(bu2) then data = [data,bt]
+        if is_struct(bu2) then tms = [tms,bu2.x]
+        
+;        store_data,'Bw_tmp',data={x:bu2.x,y:bt}
+;; tplot,['rbsp'+probe+'_efw_64_spec0','Bw_tmp']
+;; stop
+     endif  
+
+     if type eq 'Bw' then begin
+        get_data,'rbsp'+probe+'_efw_64_spec2',data=bu2
+        get_data,'rbsp'+probe+'_efw_64_spec3',data=bv2
+        get_data,'rbsp'+probe+'_efw_64_spec4',data=bw2
+        bu2.y[*,0:2] = 0.
+        bv2.y[*,0:2] = 0.
+        bw2.y[*,0:2] = 0.
+        bu2.y[*,45:63] = 0.
+        bv2.y[*,45:63] = 0.
+        bw2.y[*,45:63] = 0.
+
+        nelem = n_elements(bu2.x)
+        bt = fltarr(nelem)
+        ball = bu2.y + bv2.y + bw2.y
+        for j=0L,nelem-1 do bt[j] = sqrt(total(ball[j,*]*bandw)) ;RMS method (Malaspina's method)
+
+        if is_struct(bu2) then data = [data,bt]
+        if is_struct(bu2) then tms = [tms,bu2.x]
+
+     endif
+  endfor
+
+
+  data = data[1:n_elements(data)-1]
+  tms = tms[1:n_elements(tms)-1]
+  store_data,'wave_rms',data={x:tms,y:data}
+
+
+
+
+  ndays = n_elements(dates)
+
+  timespan,dates[0],ndays,/days
+
+;Load MLT, Lshell for all the days
+  rbsp_efw_position_velocity_crib,/noplot,/notrace
+  store_data,['*both*','*vel*','*pos*','*radius*','*diff*','*ilat*','*spinaxis*','*vmag*','*sep*'],/delete
+
+  if probe eq 'a' then store_data,'*rbspb*',/delete else store_data,'*rbspa*',/delete
+
+
+end

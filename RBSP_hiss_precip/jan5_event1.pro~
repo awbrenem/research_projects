@@ -1,0 +1,45 @@
+
+tplot_options,'title','from jan4_zoomed_event.pro'
+
+date = '2014-01-05'
+probe = 'a'
+rbspx = 'rbspa'
+timespan,date
+
+rbsp_efw_init
+
+trange = timerange()
+
+fcals = rbsp_efw_get_gain_results()
+fbinsL = fcals.cal_spec.freq_spec64L
+fbinsH = fcals.cal_spec.freq_spec64H
+bandw = fbinsH - fbinsL
+
+
+
+
+t0 = time_double('2014-01-05/19:00')
+t1 = time_double('2014-01-05/22:00')
+
+rbsp_load_efw_spec,probe='a',type='calibrated',/pt
+rbsp_load_efw_spec,probe='b',type='calibrated',/pt
+rbsp_efw_position_velocity_crib,/noplot,/notrace
+rbsp_efw_vxb_subtract_crib,probe,/hires,/no_spice_load
+rbsp_load_emfisis,probe=probe,coord='gse',cadence='1sec',level='l3'  ;load this for the mag model subtract
+
+dif_data,'rbspa_state_lshell','rbspb_state_lshell',newname='rbsp_state_lshell_diff'
+
+
+;-----------------------------------------------
+rbsp_load_efw_waveform,probe='a',type='calibrated',datatype='vsvy'
+split_vec,'rbspa_efw_vsvy', suffix='_V'+['1','2','3','4','5','6']
+get_data,'rbspa_efw_vsvy_V1',data=v1
+get_data,'rbspa_efw_vsvy_V2',data=v2
+sum12 = (v1.y + v2.y)/2.
+density = 7354.3897*exp(sum12*2.8454878)+96.123628*exp(sum12*0.43020781)
+store_data,'densitya',data={x:v1.x,y:density}
+ylim,'density?',1,10000,1
+options,'densitya','ytitle','density'+strupcase(probe)+'!Ccm^-3'
+;-----------------------------------------------
+rbsp_load_efw_waveform,probe='b',type='calibrated',datatype='vsvy'
+split_vec,'rbspb_efw_vsvy', suffix='_V'+['1','2','3','4','5','6']
