@@ -1,0 +1,8 @@
+date = 2018-09-08
+date type: STRING
+probe = b
+probe type: STRING
+ql =        1
+ql type: INT
+bp type: UNDEFINED
+despun type: UNDEFINED
