@@ -9,41 +9,33 @@
 ;--Change "zeroline" for dL, dMLT to the actual value at the minimum separation.
 
 
-
-;***********
-;***********
-;***********
-;j=1881 not working (MISSING SPEC DATA)
-;probe = 'a'
-;fb = 'FU4'
-;2018-04-19
-;***********
-;***********
-;***********
+;Even though the hires times have L and MLT values, I'm using the survey values. They match up essentially 
+;identically and there's consistency b/t the hires and non hires versions. 
 
 
-;	pathoutput = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSP'+probe+'_'+fb+'_burst_minutes/'
-pathoutput = '/Users/aaronbreneman/Desktop/'
+;Grab local path to save data
+homedir = (file_search('~',/expand_tilde))[0]+'/'
+
+
+pathoutput = homedir + 'Desktop/'
 
 
 testing = 0
 
-;.compile /Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/idl/firebird_load_data.pro
 
 probe = 'a'
 fb = 'FU3'
 pmtime = 60.  ;plus/minus time (min) from closest conjunction for data consideration
-hires = 0     ;use only conjunctions with hires FB data? (filenames with "_hr.sav")
 
 
-if keyword_set(hires) then $
-	suffix = '_conjunctions_FB_hires_only.sav' else $
-	suffix = '_conjunctions.sav'
+suffix = '_conjunctions.sav'
 
 ;--------------
 ;Conjunction data for all the FIREBIRD passes with HiRes data
-;path = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/'
-path = '/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/RBSP_Firebird_microburst_conjunctions_all/'
+path = homedir + 'Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/'
+
+;pathoutput = '/'+strvals[0]+'/'+strvals[1]+'/Desktop/'
+
 
 fn = fb+'_'+'RBSP'+strupcase(probe)+suffix
 restore,path+fn
@@ -51,23 +43,20 @@ tfb0 = t0
 tfb1 = t1
 
 
-;for i=0,n_elements(tfb0)-1 do begin
-;	datetmp = strmid(time_string(tfb0[i]),0,4) + strmid(time_string(tfb0[i]),5,2) + strmid(time_string(tfb0[i]),8,2)
-;	t0tmp = strmid(time_string(tfb0[i]),11,8)
-;	t1tmp = strmid(time_string(tfb1[i]),11,8)
-;	print,datetmp
-;endfor
-
 for bb=0,n_elements(tfb0)-1 do print,bb,' ',time_string(tfb0[bb])
 
-;for bb=0,1050 do print,bb,' ',time_string(tfb0[bb]),'  ',time_string(tfb1[bb])
-;668
+;for bb=1900,2200 do print,bb,' ',time_string(tfb0[bb]),'  ',time_string(tfb1[bb])
+;1936
 
 daytst = '0000-00-00'   ;used as a test to see if we need to load another day's data
 
 
 ;For every conjunction
 for j=0.,n_elements(tfb0)-1 do begin
+
+	;Make sure all the variables created by time_clip are deleted b/c if time_clip finds no data in requested timerange
+	;then it won't overwrite previous values. 
+	store_data,'*_tc',/del
 
 
 
@@ -79,7 +68,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 	tstart = time_string(tfb0[j])  ; - (pmtime+10.)*60.
 	tend   = time_string(tfb0[j] + (pmtime+10.)*60.)
 	ndays_load = (time_double(strmid(tend,0,10)) - time_double(strmid(tstart,0,10)))/86400 + 1
-
 
 
 
@@ -108,11 +96,19 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		;Load FIREBIRD hires data per day (if there is any)
 		timespan,trange[0]
-		if hires then firebird_load_data,strmid(fb,2,1),fileexists=fb_hiresexists
-		if not hires then firebird_load_context_data_cdf_file,fb
+
+		store_data,strlowcase(fb)+'_fb_col_hires_flux',/del
+
+		;Load hires data, if there is any
+		firebird_load_data,strmid(fb,2,1),fileexists=fb_hiresexists
 
 
-		if not hires and ndays_load eq 2 then begin
+		;load context data
+		firebird_load_context_data_cdf_file,fb
+
+
+;		if not hires and ndays_load eq 2 then begin
+		if ndays_load eq 2 then begin
 			copy_data,'D0','D01'
 			copy_data,'D1','D11'
 			copy_data,'MLT','MLT1'
@@ -131,20 +127,18 @@ for j=0.,n_elements(tfb0)-1 do begin
 			get_data,'McIlwainL',vx,d & get_data,'McIlwainL1',v1x,d1
 			store_data,'McIlwainL',[v1x,vx],[d1,d]
 			store_data,['D01','D11','MLT1','McIlwainL1'],/del
-
-
 		endif
 
 		;Lots of missing FIREBIRD data, so we'll test to see if it's been loaded.
 		;If not, then skip to next data
+
+
+
 		xtst1 = tsample('D0',[time_double(trange[0]),time_double(trange[1])])
-	;	xtst2 = tsample('rbsp'+probe+'_emfisis_l3_4sec_gsm_Mag',[time_double(trange[0]),time_double(trange[1])])
-	;	xtst3 = tsample('rbsp'+probe+'_state_lshell',[time_double(trange[0]),time_double(trange[1])])
 
 		missingdata = 0
 		if n_elements(xtst1) eq 1 and finite(xtst1[0]) eq 0 then missingdata = 1
-	;	if n_elements(xtst2) eq 1 and finite(xtst2[0]) eq 0 then missingdata = 1
-	;	if n_elements(xtst3) eq 1 and finite(xtst3[0]) eq 0 then missingdata = 1
+
 
 
 		if missingdata ne 1 then begin
@@ -212,8 +206,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 	if missingdata ne 1 then begin
 
 
-
-
 		;create artifical times array with 1-sec cadence for timerange requested.
 	;	tr = timerange()
 		ntimes = time_double(trange[1]) - time_double(trange[0])
@@ -228,10 +220,10 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'fb_conjunction_times',times_artificial,vals
 		ylim,'fb_conjunction_times',0,2
 		options,'fb_conjunction_times','psym',0
-		options,'fb_conjunction_times','ytitle','FB!Cconj!Chires'
+		options,'fb_conjunction_times','ytitle','FB!Cconj'
 
 
-	;****
+
 
 		get_data,'rbsp'+probe+'_emfisis_l3_4sec_gsm_Magnitude',ttt,magnit
 		fce = 28.*magnit
@@ -291,19 +283,11 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
+		store_data,'lcomb',data=['rbsp'+probe+'_state_lshell','McIlwainL']
+		store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt','MLT']
+		options,'MLT','psym',-2
+		options,'McIlwainL','psym',-2
 
-			;combine L, MLT plots for RBSP and FB
-		if hires then begin
-			store_data,'lcomb',data=['rbsp'+probe+'_state_lshell',strlowcase(fb)+'_fb_mcilwainL_from_hiresfile']
-			store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt',strlowcase(fb)+'_fb_mlt_from_hiresfile']
-			options,strlowcase(fb)+'_fb_mlt_from_hiresfile','psym',-2
-			options,strlowcase(fb)+'_fb_mcilwainL_from_hiresfile','psym',-2
-		endif else begin
-			store_data,'lcomb',data=['rbsp'+probe+'_state_lshell','McIlwainL']
-			store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt','MLT']
-			options,'MLT','psym',-2
-			options,'McIlwainL','psym',-2
-		endelse
 		options,'lcomb','colors',[0,250]
 		options,'mltcomb','colors',[0,250]
 		options,'rbsp'+probe+'_state_lshell','thick',2
@@ -322,6 +306,8 @@ for j=0.,n_elements(tfb0)-1 do begin
 		print,time_string(t0z)
 		print,time_string(t1z)
 		if testing then stop
+
+
 	;-------------------------------------------------------------------------
 		;Find how many seconds of burst availability there is in the timerange t0z to t1z
 	;-------------------------------------------------------------------------
@@ -329,7 +315,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;First do this for EMFISIS burst data
 		get_data,'rbsp'+probe+'_emfisis_burst',t,d
 		goo = where((t ge t0z) and (t le t1z))
-		nsec_emf = 0.
+		nsec_emf = !values.f_nan
 		if goo[0] ne -1 then begin
 			dtots = total(d[goo],/nan)
 			sr = sample_rate(t)
@@ -343,7 +329,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		timestmp = time_double(currday) + dindgen(100.*86400.)/99.
 		valstmp = fltarr(n_elements(timestmp))
 		cadence = n_elements(timestmp)/86400.
-		nsec_b2 = 0.
+		nsec_b2 = !values.f_nan
 		if is_struct(b2t) then begin
 			for i=0,n_elements(b2t.duration)-1 do begin
 					goo = where((timestmp ge b2t.startb2[i]) and (timestmp le b2t.endb2[i]))
@@ -358,7 +344,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		timestmp = time_double(currday) + dindgen(100.*86400.)/99.
 		valstmp = fltarr(n_elements(timestmp))
 		cadence = n_elements(timestmp)/86400.
-		nsec_b1 = 0.
+		nsec_b1 = !values.f_nan
 		if is_struct(b1t) then begin
 			for i=0,n_elements(b1t.duration)-1 do begin
 					goo = where((timestmp ge b1t.startb1[i]) and (timestmp le b1t.endb1[i]))
@@ -372,10 +358,10 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
-	;-----------------------------------------------------------
-	;Find the average spectral power in chorus freq range within
-	;+/-1 hr of conjunction
-	;-----------------------------------------------------------
+		;-----------------------------------------------------------
+		;Find the average spectral power in chorus freq range within
+		;+/-1 hr of conjunction
+		;-----------------------------------------------------------
 
 
 		;First the Electric field
@@ -427,6 +413,20 @@ for j=0.,n_elements(tfb0)-1 do begin
 			medianchorusspecL_E = median(spectmpL)
 			medianchorusspecU_E = median(spectmpU)
 			mediannonchorusspec_E = median(spectmpO)
+
+			if totalchorusspecL_E eq 0. then totalchorusspecL_E = !values.f_nan
+			if totalchorusspecU_E eq 0. then totalchorusspecU_E = !values.f_nan
+			if totalnonchorusspec_E eq 0. then totalnonchorusspec_E = !values.f_nan
+			if maxchorusspecL_E eq 0. then maxchorusspecL_E = !values.f_nan
+			if maxchorusspecU_E eq 0. then maxchorusspecU_E = !values.f_nan
+			if maxnonchorusspec_E eq 0. then maxnonchorusspec_E = !values.f_nan
+			if avgchorusspecL_E eq 0. then avgchorusspecL_E = !values.f_nan
+			if avgchorusspecU_E eq 0. then avgchorusspecU_E = !values.f_nan
+			if avgnonchorusspec_E eq 0. then avgnonchorusspec_E = !values.f_nan
+			if medianchorusspecL_E eq 0. then medianchorusspecL_E = !values.f_nan
+			if medianchorusspecU_E eq 0. then medianchorusspecU_E = !values.f_nan
+			if mediannonchorusspec_E eq 0. then mediannonchorusspec_E = !values.f_nan
+
 
 			print,'Totals ',totalnonchorusspec_E,totalchorusspecL_E,totalchorusspecU_E
 			print,'Max ',maxnonchorusspec_E,maxchorusspecL_E,maxchorusspecU_E
@@ -510,6 +510,21 @@ for j=0.,n_elements(tfb0)-1 do begin
 			medianchorusspecU_B = median(spectmpU)
 			mediannonchorusspec_B = median(spectmpO)
 
+			if totalchorusspecL_B eq 0. then totalchorusspecL_B = !values.f_nan
+			if totalchorusspecU_B eq 0. then totalchorusspecU_B = !values.f_nan
+			if totalnonchorusspec_B eq 0. then totalnonchorusspec_B = !values.f_nan
+			if maxchorusspecL_B eq 0. then maxchorusspecL_B = !values.f_nan
+			if maxchorusspecU_B eq 0. then maxchorusspecU_B = !values.f_nan
+			if maxnonchorusspec_B eq 0. then maxnonchorusspec_B = !values.f_nan
+			if avgchorusspecL_B eq 0. then avgchorusspecL_B = !values.f_nan
+			if avgchorusspecU_B eq 0. then avgchorusspecU_B = !values.f_nan
+			if avgnonchorusspec_B eq 0. then avgnonchorusspec_B = !values.f_nan
+			if medianchorusspecL_B eq 0. then medianchorusspecL_B = !values.f_nan
+			if medianchorusspecU_B eq 0. then medianchorusspecU_B = !values.f_nan
+			if mediannonchorusspec_B eq 0. then mediannonchorusspec_B = !values.f_nan
+
+
+
 			print,'Totals ',totalnonchorusspec_B,totalchorusspecL_B,totalchorusspecU_B
 			print,'Max ',maxnonchorusspec_B,maxchorusspecL_B,maxchorusspecU_B
 			print,'Avg ',avgnonchorusspec_B,avgchorusspecL_B,avgchorusspecU_B
@@ -550,17 +565,11 @@ for j=0.,n_elements(tfb0)-1 do begin
 	;Find the MLT, L, deltaMLT and deltaL of the closest pass
 	;---------------------------------------------------------
 
-		if hires then begin
-			tinterpol_mxn,'rbsp'+probe+'_state_lshell',strlowcase(fb)+'_fb_mcilwainL_from_hiresfile',newname='rbsp'+probe+'_state_lshell_interp'
-			tinterpol_mxn,'rbsp'+probe+'_state_mlt',strlowcase(fb)+'_fb_mlt_from_hiresfile',newname='rbsp'+probe+'_state_mlt_interp'
-			dif_data,'rbsp'+probe+'_state_lshell_interp',strlowcase(fb)+'_fb_mcilwainL_from_hiresfile',newname='ldiff'
-			calculate_angle_difference,'rbsp'+probe+'_state_mlt_interp',strlowcase(fb)+'_fb_mlt_from_hiresfile',newname='mltdiff'
-		endif else begin
-			tinterpol_mxn,'rbsp'+probe+'_state_lshell','McIlwainL',newname='rbsp'+probe+'_state_lshell_interp'
-			tinterpol_mxn,'rbsp'+probe+'_state_mlt','MLT',newname='rbsp'+probe+'_state_mlt_interp'
-			dif_data,'rbsp'+probe+'_state_lshell_interp','McIlwainL',newname='ldiff'
-			calculate_angle_difference,'rbsp'+probe+'_state_mlt_interp','MLT',newname='mltdiff'
-		endelse
+		tinterpol_mxn,'rbsp'+probe+'_state_lshell','McIlwainL',newname='rbsp'+probe+'_state_lshell_interp'
+		tinterpol_mxn,'rbsp'+probe+'_state_mlt','MLT',newname='rbsp'+probe+'_state_mlt_interp'
+		dif_data,'rbsp'+probe+'_state_lshell_interp','McIlwainL',newname='ldiff'
+		calculate_angle_difference,'rbsp'+probe+'_state_mlt_interp','MLT',newname='mltdiff'
+
 
 		options,['McIlwainL','MLT','rbsp'+probe+'_state_mlt','rbsp'+probe+'_state_lshell','ldiff','mltdiff'],'psym',-2
 		ylim,'ldiff',-20,20
@@ -571,21 +580,17 @@ for j=0.,n_elements(tfb0)-1 do begin
 		time_clip,'mltdiff',t0z,t1z,newname='mltdiff_tc'
 		time_clip,'rbsp'+probe+'_state_lshell_interp',t0z,t1z,newname='rbsp'+probe+'_state_lshell_interp_tc'
 		time_clip,'rbsp'+probe+'_state_mlt_interp',t0z,t1z,newname='rbsp'+probe+'_state_mlt_interp_tc'
-		if hires then begin
-			time_clip,strlowcase(fb)+'_fb_mlt_from_hiresfile',t0z,t1z,newname='fb_mlt_tc'
-			time_clip,strlowcase(fb)+'_fb_mcilwainL_from_hiresfile',t0z,t1z,newname='fb_mcilwainL_tc'
-		endif else begin
-			time_clip,'MLT',t0z,t1z,newname='fb_mlt_tc'
-			time_clip,'McIlwainL',t0z,t1z,newname='fb_mcilwainL_tc'
-		endelse
+		time_clip,'MLT',t0z,t1z,newname='fb_mlt_tc'
+		time_clip,'McIlwainL',t0z,t1z,newname='fb_mcilwainL_tc'
+
 		ylim,'fb_mcilwainL_tc',0,20
 		ylim,'ldiff_tc',-20,20
 
 
-;		if testing then begin
-;		tplot,['ldiff','mltdiff','ldiff_tc','mltdiff_tc']
-;		stop
-;		endif
+		if testing then begin
+		tplot,['ldiff','mltdiff','ldiff_tc','mltdiff_tc']
+		stop
+		endif
 
 	;	;add zero line for difference plots
 	;	get_data,'rbsp'+probe+'_state_lshell',tt,dd
@@ -600,12 +605,23 @@ for j=0.,n_elements(tfb0)-1 do begin
 		sc_absolute_separation,'rbsp'+probe+'_state_lshell_interp_tc','fb_mcilwainL_tc',$
 			'rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc';,/km
 
+		if testing then begin
+			tplot,['rbsp'+probe+'_state_lshell_interp_tc','fb_mcilwainL_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc']
+		endif
+
 		ylim,'separation_absolute',-20,20
 		options,['separation_absolute','ldiff_tc','mltdiff_tc','rbsp'+probe+'_state_lshell_interp_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc'],'psym',-2
+;		tplot,['separation_absolute','ldiff_tc','mltdiff_tc','rbsp'+probe+'_state_lshell_interp_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc']
 
 		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
 		get_data,'separation_absolute',tt,dat
 
+;stop
+		whsep = -1
+		min_sep = !values.f_nan
+		min_sep_time = !values.f_nan
+		min_dmlt = !values.f_nan
+		min_dL = !values.f_nan
 
 
 	  ;select conjunction times only. NOTE: there are some conjunctions with
@@ -618,14 +634,19 @@ for j=0.,n_elements(tfb0)-1 do begin
 			min_dmlt = dat[boo[whsep]]
 			get_data,'ldiff_tc',tt,dat
 			min_dL = dat[boo[whsep]]
-		endif else begin
-			whsep = -1
-			min_sep = !values.f_nan
-			min_sep_time = !values.f_nan
-			min_dmlt = !values.f_nan
-			min_dL = !values.f_nan
-		endelse
+		endif 
 
+
+		;Check to see if any hires data loaded near the conjunction
+		hires = 0
+		hires = tdexists(strlowcase(fb)+'_fb_col_hires_flux',t0[j],t1[j])
+		nsec_hires = !values.f_nan
+
+		if hires then begin 
+			tmpp = tsample(strlowcase(fb)+'_fb_col_hires_flux',[t0[j],t1[j]],times=tms)
+			ttmp = tms - min(tms)
+			nsec_hires = max(ttmp,/nan)
+		endif
 
 ;		if testing then begin
 ;			tplot,['separation_absolute','ldiff_tc','rbsp'+probe+'_state_lshell_interp_tc','fb_mcilwainL_tc','mltdiff_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc']
@@ -660,13 +681,19 @@ for j=0.,n_elements(tfb0)-1 do begin
 		ylim,'ldiff_tc_comb',-20,20
 
 		if testing then begin
-			tplot,['minsep_tc_comb','ldiff_tc_comb','mltdiff_tc_comb','lcomb','ldiff','mltcomb','mltdiff']
+			timespan,t0[j]-20,(t1[j]-t0[j])+40,/seconds
+			tplot,[strlowcase(fb)+'_fb_col_hires_flux','minsep_tc_comb','ldiff_tc_comb','mltdiff_tc_comb','lcomb','ldiff','mltcomb','mltdiff']
 			if whsep ne -1 then timebar,tt[boo[whsep]]
 			timebar,t0[j],color=250
 			timebar,t1[j],color=250
-			stop
+			stop			
 		endif
 
+
+		lshell_min_rb = !values.f_nan
+		lshell_min_fb = !values.f_nan
+		mlt_min_rb = !values.f_nan
+		mlt_min_fb = !values.f_nan
 
 		if whsep ne -1 then begin
 			l2_probe = tsample('rbsp'+probe+'_state_lshell_interp_tc',tt[boo[whsep]],times=t)
@@ -678,15 +705,29 @@ for j=0.,n_elements(tfb0)-1 do begin
 			lshell_min_fb = l2_fb
 			mlt2_fb = tsample('fb_mlt_tc',tt[boo[whsep]],times=t)
 			mlt_min_fb = mlt2_fb
-		endif else begin
-			lshell_min_rb = !values.f_nan
+		endif
+
+
+		;There are quite a number of orbits where there's no overlapping FB and RBSP ephemeris data. 
+		;When this is the case, determine the RBSP L, MLT values as the average value during the start 
+		;and stop of the conjunction. Nothing I can do about the missing FB data, but at least the RBSP
+		;data will tell me where the conjunction took place.  
+		;DON'T use the interpolated values for this b/c the FB gaps show up in the RBSP ephemeris data
+
+		if finite(lshell_min_rb) eq 0 then begin 
+			l2_probe = tsample('rbsp'+probe+'_state_lshell',[t0[j],t1[j]],times=t)
+			lshell_min_rb = mean(l2_probe,/nan)
+			mlt2_probe = tsample('rbsp'+probe+'_state_mlt',[t0[j],t1[j]],times=t)
+			mlt_min_rb = mean(mlt2_probe,/nan)
+		endif
+
+		;Sometimes the FB values are outrageous. Fix them here. 
+		if min_sep gt 100. then begin 
+			min_sep = !values.f_nan
+			min_dL = !values.f_nan
 			lshell_min_fb = !values.f_nan
-			mlt_min_rb = !values.f_nan
-			mlt_min_fb = !values.f_nan
-		endelse
+		endif
 
-
-	;stop
 
 		;---------------------------------------------------------------
 		;Find max FB flux - Use detrended version to get rid of the sc roll
@@ -695,43 +736,65 @@ for j=0.,n_elements(tfb0)-1 do begin
 ;			time_clip,strlowcase(fb)+'_fb_sur_hires_flux',t0z,t1z,newname='fb_sur_flux_tc'
 ;			rbsp_detrend,'fb_sur_flux_tc',0.1
 ;			get_data,'fb_sur_flux_tc_detrend',tt,dat
-;			max_flux_sur = max(dat,/nan)
+;			max_HRflux_sur = max(dat,/nan)
 ;			time_clip,strlowcase(fb)+'_fb_col_hires_flux',t0z,t1z,newname='fb_col_flux_tc'
 ;			rbsp_detrend,'fb_col_flux_tc',0.1
 ;			get_data,'fb_col_flux_tc_detrend',tt,dat
-;			max_flux_col = max(dat,/nan)
+;			max_HRflux_col = max(dat,/nan)
 ;		endif else begin
 ;			time_clip,'D1',t0z,t1z,newname='fb_sur_flux_tc'
 ;			get_data,'fb_sur_flux_tc',tt,dat
-;			max_flux_sur = max(dat,/nan)
+;			max_HRflux_sur = max(dat,/nan)
 ;			time_clip,'D0',t0z,t1z,newname='fb_col_flux_tc'
 ;			get_data,'fb_col_flux_tc',tt,dat
-;			max_flux_col = max(dat,/nan)
+;			max_HRflux_col = max(dat,/nan)
 ;		endelse
 
 
-	;Limit to times of conjunction only (t0[j] to t1[j]) and not to the +/-60 min
-	;times which I use for RBSP
+		;hires only 
+		max_HRflux_sur = !values.f_nan
+		max_HRflux_col = !values.f_nan
+		;survey only 
+		max_counts_sur = !values.f_nan
+		max_counts_col = !values.f_nan
+
+		;Limit to times of conjunction only (t0[j] to t1[j]) and not to the +/-60 min
+		;times which I use for RBSP
 		if hires then begin
 			time_clip,strlowcase(fb)+'_fb_sur_hires_flux',t0[j],t1[j],newname='fb_sur_flux_tc'
 			rbsp_detrend,'fb_sur_flux_tc',0.1
 			get_data,'fb_sur_flux_tc_detrend',tt,dat
-			max_flux_sur = max(dat,/nan)
+			max_HRflux_sur = max(dat,/nan)
 			time_clip,strlowcase(fb)+'_fb_col_hires_flux',t0[j],t1[j],newname='fb_col_flux_tc'
 			rbsp_detrend,'fb_col_flux_tc',0.1
 			get_data,'fb_col_flux_tc_detrend',tt,dat
-			max_flux_col = max(dat,/nan)
-		endif else begin
-			time_clip,'D1',t0[j],t1[j],newname='fb_sur_flux_tc'
-			get_data,'fb_sur_flux_tc',tt,dat
-			max_flux_sur = max(dat,/nan)
-			time_clip,'D0',t0[j],t1[j],newname='fb_col_flux_tc'
-			get_data,'fb_col_flux_tc',tt,dat
-			max_flux_col = max(dat,/nan)
-		endelse
+			max_HRflux_col = max(dat,/nan)
+		endif
+		time_clip,'D1',t0[j],t1[j],newname='fb_sur_flux_tc'
+		get_data,'fb_sur_flux_tc',tt,dat
+		max_counts_sur = max(dat,/nan)
+		time_clip,'D0',t0[j],t1[j],newname='fb_col_flux_tc'
+		get_data,'fb_col_flux_tc',tt,dat
+		max_counts_col = max(dat,/nan)
 
-		if max_flux_sur eq 0. then max_flux_sur = !values.f_nan
-		if max_flux_col eq 0. then max_flux_col = !values.f_nan
+
+
+;;********************
+;;COMPARE HIRES TO SURVEY FIREBIRD FLUXES 
+;rbsp_detrend,strlowcase(fb)+'_fb_sur_hires_flux',0.1
+;;rbsp_detrend,'D1',0.1
+;
+;tplot,[strlowcase(fb)+'_fb_sur_hires_flux_detrend',strlowcase(fb)+'_fb_sur_hires_flux','D1']
+;
+;;*******************
+;stop
+
+		if max_counts_sur eq 0 then max_counts_sur = !values.f_nan
+		if max_counts_col eq 0 then max_counts_col = !values.f_nan
+		if max_HRflux_sur eq 0 then max_HRflux_sur = !values.f_nan
+		if max_HRflux_col eq 0 then max_HRflux_col = !values.f_nan
+
+
 
 
 	;	rbsp_detrend,'fb_col_flux_tc',0.2
@@ -753,23 +816,27 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		get_data,'rbsp'+probe+'_efw_fbk7_e12dc_pk_tc',data=dat
 		if is_struct(dat) then begin
+			fbk7_Ewmax_3 = float(max(dat.y[*,3],/nan))  ;50-100 Hz
 			fbk7_Ewmax_4 = float(max(dat.y[*,4],/nan))  ;200-400 Hz
 			fbk7_Ewmax_5 = float(max(dat.y[*,5],/nan))  ;0.8-1.6 kHz
 			fbk7_Ewmax_6 = float(max(dat.y[*,6],/nan))  ;3.2-6.5 kHz
 		endif else begin
-			fbk7_Ewmax_4 = 0.
-			fbk7_Ewmax_5 = 0.
-			fbk7_Ewmax_6 = 0.
+			fbk7_Ewmax_3 = !values.f_nan
+			fbk7_Ewmax_4 = !values.f_nan
+			fbk7_Ewmax_5 = !values.f_nan
+			fbk7_Ewmax_6 = !values.f_nan
 		endelse
 		get_data,'rbsp'+probe+'_efw_fbk7_scmw_pk_tc',data=dat
 		if is_struct(dat) then begin
+			fbk7_Bwmax_3 = 1000.*float(max(dat.y[*,3],/nan))  ;50-100 Hz
 			fbk7_Bwmax_4 = 1000.*float(max(dat.y[*,4],/nan))  ;200-400 Hz
 			fbk7_Bwmax_5 = 1000.*float(max(dat.y[*,5],/nan))  ;0.8-1.6 kHz
 			fbk7_Bwmax_6 = 1000.*float(max(dat.y[*,6],/nan))  ;3.2-6.5 kHz
 		endif else begin
-			fbk7_Bwmax_4 = 0.
-			fbk7_Bwmax_5 = 0.
-			fbk7_Bwmax_6 = 0.
+			fbk7_Bwmax_3 = !values.f_nan
+			fbk7_Bwmax_4 = !values.f_nan
+			fbk7_Bwmax_5 = !values.f_nan
+			fbk7_Bwmax_6 = !values.f_nan
 		endelse
 
 ;tplot,['rbsp'+probe+'_efw_fbk7_e12dc_pk_tc','rbsp'+probe+'_efw_fbk7_scmw_pk_tc']
@@ -778,22 +845,25 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;Find max filterbank value in various bins for FBK13 mode
 		get_data,'rbsp'+probe+'_efw_fbk13_e12dc_pk_tc',data=dat
 		if is_struct(dat) then begin
-			fbk13_Ewmax_7 = float(max(dat.y[*,7],/nan))
-			fbk13_Ewmax_8 = float(max(dat.y[*,8],/nan))
-			fbk13_Ewmax_9 = float(max(dat.y[*,9],/nan))
-			fbk13_Ewmax_10 = float(max(dat.y[*,10],/nan))
-			fbk13_Ewmax_11 = float(max(dat.y[*,11],/nan))
-			fbk13_Ewmax_12 = float(max(dat.y[*,12],/nan))
+			fbk13_Ewmax_6 = float(max(dat.y[*,6],/nan))   ;100-200 Hz
+			fbk13_Ewmax_7 = float(max(dat.y[*,7],/nan))   ;100-200 Hz
+			fbk13_Ewmax_8 = float(max(dat.y[*,8],/nan))   ;200-400 Hz
+			fbk13_Ewmax_9 = float(max(dat.y[*,9],/nan))   ;400-800 Hz
+			fbk13_Ewmax_10 = float(max(dat.y[*,10],/nan)) ;0.8-1.5 kHz
+			fbk13_Ewmax_11 = float(max(dat.y[*,11],/nan)) ;1.6-3.2 kHz
+			fbk13_Ewmax_12 = float(max(dat.y[*,12],/nan)) ;3.2-6.5 kHz
 		endif else begin
-			fbk13_Ewmax_7 = 0.
-			fbk13_Ewmax_8 = 0.
-			fbk13_Ewmax_9 = 0.
-			fbk13_Ewmax_10 = 0.
-			fbk13_Ewmax_11 = 0.
-			fbk13_Ewmax_12 = 0.
+			fbk13_Ewmax_6 = !values.f_nan
+			fbk13_Ewmax_7 = !values.f_nan
+			fbk13_Ewmax_8 = !values.f_nan
+			fbk13_Ewmax_9 = !values.f_nan
+			fbk13_Ewmax_10 = !values.f_nan
+			fbk13_Ewmax_11 = !values.f_nan
+			fbk13_Ewmax_12 = !values.f_nan
 		endelse
 		get_data,'rbsp'+probe+'_efw_fbk13_scmw_pk_tc',data=dat
 		if is_struct(dat) then begin
+			fbk13_Bwmax_6 = 1000.*float(max(dat.y[*,6],/nan))
 			fbk13_Bwmax_7 = 1000.*float(max(dat.y[*,7],/nan))
 			fbk13_Bwmax_8 = 1000.*float(max(dat.y[*,8],/nan))
 			fbk13_Bwmax_9 = 1000.*float(max(dat.y[*,9],/nan))
@@ -801,12 +871,13 @@ for j=0.,n_elements(tfb0)-1 do begin
 			fbk13_Bwmax_11 = 1000.*float(max(dat.y[*,11],/nan))
 			fbk13_Bwmax_12 = 1000.*float(max(dat.y[*,12],/nan))
 		endif else begin
-			fbk13_Bwmax_7 = 0.
-			fbk13_Bwmax_8 = 0.
-			fbk13_Bwmax_9 = 0.
-			fbk13_Bwmax_10 = 0.
-			fbk13_Bwmax_11 = 0.
-			fbk13_Bwmax_12 = 0.
+			fbk13_Bwmax_6 = !values.f_nan
+			fbk13_Bwmax_7 = !values.f_nan
+			fbk13_Bwmax_8 = !values.f_nan
+			fbk13_Bwmax_9 = !values.f_nan
+			fbk13_Bwmax_10 = !values.f_nan
+			fbk13_Bwmax_11 = !values.f_nan
+			fbk13_Bwmax_12 = !values.f_nan
 		endelse
 
 	;-----------------------------------------------
@@ -836,7 +907,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		if not result then begin
 			openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun
 	;					OLD HEADER STYLE (TAKES UP TOO MUCH SPACE)
-	;					printf,lun,'date			Lshell			MLT 		min_sep		dLmin			dMLTmin 		max_flux_col		max_flux_sur	nsec_EMF_burst		nsec_B1_burst 		nsec_B2_burst		fbk7_Ewmax_4		fbk7_Ewmax_5		fbk7_Ewmax_6	fbk7_Bwmax_4	fbk7_Bwmax_5	fbk7_Bwmax_6	fbk13_Ewmax_7	fbk13_Ewmax_8	fbk13_Ewmax_9	fbk13_Ewmax_10	fbk13_Ewmax_11	fbk13_Ewmax_12	fbk13_Bwmax_7	fbk13_Bwmax_8	fbk13_Bwmax_9	fbk13_Bwmax_10	fbk13_Bwmax_11	fbk13_Bwmax_12'
+	;					printf,lun,'date			Lshell			MLT 		min_sep		dLmin			dMLTmin 		max_counts_col		max_counts_sur	nsec_EMF_burst		nsec_B1_burst 		nsec_B2_burst		fbk7_Ewmax_4		fbk7_Ewmax_5		fbk7_Ewmax_6	fbk7_Bwmax_4	fbk7_Bwmax_5	fbk7_Bwmax_6	fbk13_Ewmax_7	fbk13_Ewmax_8	fbk13_Ewmax_9	fbk13_Ewmax_10	fbk13_Ewmax_11	fbk13_Ewmax_12	fbk13_Bwmax_7	fbk13_Bwmax_8	fbk13_Bwmax_9	fbk13_Bwmax_10	fbk13_Bwmax_11	fbk13_Bwmax_12'
 	;					NEW HEADER STYLE
 	;					printf,lun,'date					  L		 MLT     mnsep	  dL	   dMLT   col	sur	  EMFb   B1b   B2b  7E4	 7E5  7E6  7B4  7B5	7B6  13E7 13E8 13E9 13E10 13E11	13E12 13B7 13B8	13B9 13B10 13B11 13B12'
 						printf,lun,'Conjunction data for RBSP'+probe+' and '+fb + ' from Shumko file ' + fb+'_'+rb+'_conjunctions_dL10_dMLT10_hr_final.txt'
@@ -850,8 +921,11 @@ for j=0.,n_elements(tfb0)-1 do begin
 						printf,lun,'distmin = minimum |separation| in RE b/t rbsp'+probe + ' and ' +fb + ' at Tminsep'
 						printf,lun,'dLmin = |delta L| of rbsp'+probe+ ') during min separation time'
 						printf,lun,'dMLTmin = |delta MLT| of rbsp'+probe+ ') during min separation time'
-						printf,lun,'col = max collimated detector FB flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
-						printf,lun,'sur = max surface detector FB flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
+						printf,lun,'colS = max collimated detector FB survey counts during conjunction'
+						printf,lun,'surS = max surface detector FB survey counts during conjunction'
+						printf,lun,'colHR = max collimated detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
+						printf,lun,'surHR = max surface detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
+						printf,lun,'FBb = Number seconds hires FIREBIRD data available during conjunction (Tstart and Tend)'
 						printf,lun,'EMFb = number of sec of EMFISIS burst data within +/-60 min of middle conjunction time'
 						printf,lun,'B1b = number of sec of EFW burst 1 data within +/-60 min of middle conjunction time'
 						printf,lun,'B2b = number of sec of EFW burst 2 data within +/-60 min of middle conjunction time'
@@ -888,10 +962,13 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 						printf,lun,'The remaining columns are max EFW filter bank amplitudes (pT, mV/m) within +/-60 min of middle conjunction time'
+						printf,lun,'NOTE1: many entries have missing FIREBIRD data, including ephemeris. This is correct, and is more prevelant early in the mission...'
+						printf,lun,'...During these time the RBSP L and MLT values are taken as the AVERAGE value during the conjunction, not the values at the closest approach, which is undefined'
+						printf,lun,'NOTE2: the majority of conjunctions have no FIREBIRD hires data. See the FBb column.'
 						printf,lun,' '
 
 						;printf,lun,'Tstart              Tend                Tmin				   Lrb      Lfb     MLTrb    MLTfb   distmin    dLmin	 dMLTmin  col	      sur         EMFb    B1b   B2b  SpecETot_lf     SpecEMax_lf    SpecEAvg_lf    SpecEMed_lf    SpecETot_lb    SpecEMax_lb       SpecEAvg_lb    SpecEMed_lb    SpecETot_ub    SpecEMax_ub    SpecEAvg_ub    SpecEMed_ub    SpecBTot_lf    SpecBMax_lf   SpecBAvg_lf    SpecBMed_lf    SpecBTot_lb    SpecBMax_lb     SpecBAvg_lb    SpecBMed_lb    SpecBTot_ub    SpecBMax_ub    SpecBAvg_ub   SpecBMed_ub  7E4   7E5  7E6   7B4    7B5  7B6   13E7  13E8  13E9 13E10 13E11 13E12   13B7  13B8  13B9 13B10 13B11 13B12'
-						printf,lun,'Tstart              Tend                Tmin				   Lrb      Lfb     MLTrb    MLTfb   distmin    dLmin	 dMLTmin   col	       sur         EMFb   B1b   B2b            SpecETot_lf         SpecEMax_lf         SpecEAvg_lf         SpecEMed_lf                SpecETot_lb             SpecEMax_lb       SpecEAvg_lb           SpecEMed_lb            SpecETot_ub           SpecEMax_ub            SpecEAvg_ub         SpecEMed_ub           SpecBTot_lf         SpecBMax_lf         SpecBAvg_lf         SpecBMed_lf                SpecBTot_lb             SpecBMax_lb     SpecBAvg_lb            SpecBMed_lb             SpecBTot_ub              SpecBMax_ub        SpecBAvg_ub        SpecBMed_ub  7E4   7E5  7E6   7B4    7B5  7B6   13E7  13E8  13E9 13E10 13E11 13E12   13B7  13B8  13B9 13B10 13B11 13B12'
+						printf,lun,'Tstart              Tend                Tmin			       Lrb      Lfb     MLTrb    MLTfb   distmin    dLmin	 dMLTmin       colS	       surS		  colHR		 surHR      FBb   EMFb      B1b   B2b                SpecETot_lf         SpecEMax_lf         SpecEAvg_lf         SpecEMed_lf                SpecETot_lb             SpecEMax_lb       SpecEAvg_lb           SpecEMed_lb            SpecETot_ub           SpecEMax_ub            SpecEAvg_ub         SpecEMed_ub           SpecBTot_lf         SpecBMax_lf         SpecBAvg_lf         SpecBMed_lf                SpecBTot_lb             SpecBMax_lb     SpecBAvg_lb            SpecBMed_lb             SpecBTot_ub              SpecBMax_ub        SpecBAvg_ub        SpecBMed_ub    7E3	  7E4     7E5     7E6    7B3	 7B4      7B5     7B6    13E6	  13E7    13E8    13E9    13E10   13E11    13E12   13B6	   13B7   13B8    13B9    13B10   13B11   13B12'
 	
 						close,lun
 						free_lun,lun
@@ -903,7 +980,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		tstart = time_string(t0[j])
 		tend = time_string(t1[j])
-		tminsep = time_string(min_sep_time)
+		tminsep = time_string(min_sep_time,tformat='YYYY-MM-DD/hh:mm:ss')
 		lshell_min_rb = string(lshell_min_rb,format='(f9.2)')
 		lshell_min_fb = string(lshell_min_fb,format='(f9.2)')
 		mlt_min_rb = string(mlt_min_rb,format='(f9.2)')
@@ -911,11 +988,14 @@ for j=0.,n_elements(tfb0)-1 do begin
 		min_sep = string(min_sep,format='(f10.5)')
 		min_dL = string(min_dL,format='(f9.3)')
 		min_dMLT = string(min_dMLT,format='(f9.3)')
-		max_flux_col = string(max_flux_col,format='(F12.2)')
-		max_flux_sur = string(max_flux_sur,format='(F12.2)')
-		nsec_emf = string(nsec_emf,format='(I6)')
-		nsec_b1 = string(nsec_b1,format='(I6)')
-		nsec_b2 = string(nsec_b2,format='(I6)')
+		max_counts_col = string(max_counts_col,format='(F12.2)')
+		max_counts_sur = string(max_counts_sur,format='(F12.2)')
+		max_HRflux_col = string(max_HRflux_col,format='(F12.2)')
+		max_HRflux_sur = string(max_HRflux_sur,format='(F12.2)')
+		nsec_hires = string(nsec_hires,format='(f8.1)')
+		nsec_emf = string(nsec_emf,format='(f8.1)')
+		nsec_b1 = string(nsec_b1,format='(f8.1)')
+		nsec_b2 = string(nsec_b2,format='(f8.1)')
 
 
 		print,tstart,'  ',tend
@@ -923,7 +1003,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		print,lshell_min_rb,'  ',lshell_min_fb,'   ',min_dl
 		print,mlt_min_rb,'   ',mlt_min_fb,'   ',min_dmlt
 
-	;stop
+	stop
 
 
 		totalnonchorusspec_E = string(totalnonchorusspec_E,format='(F27.11)')
@@ -957,47 +1037,49 @@ for j=0.,n_elements(tfb0)-1 do begin
 		medianchorusspecU_B = string(medianchorusspecU_B,format='(F20.11)')
 
 
-		fbk7_Ewmax_4 = string(fbk7_Ewmax_4,format='(I6)')
-		fbk7_Ewmax_5 = string(fbk7_Ewmax_5,format='(I6)')
-		fbk7_Ewmax_6 = string(fbk7_Ewmax_6,format='(I6)')
-		fbk7_Bwmax_4 = string(fbk7_Bwmax_4,format='(I6)')
-		fbk7_Bwmax_5 = string(fbk7_Bwmax_5,format='(I6)')
-		fbk7_Bwmax_6 = string(fbk7_Bwmax_6,format='(I6)')
-		fbk13_Ewmax_7 = string(fbk13_Ewmax_7,format='(I6)')
-		fbk13_Ewmax_8 = string(fbk13_Ewmax_8,format='(I6)')
-		fbk13_Ewmax_9 = string(fbk13_Ewmax_9,format='(I6)')
-		fbk13_Ewmax_10 = string(fbk13_Ewmax_10,format='(I6)')
-		fbk13_Ewmax_11 = string(fbk13_Ewmax_11,format='(I6)')
-		fbk13_Ewmax_12 = string(fbk13_Ewmax_12,format='(I6)')
-		fbk13_Bwmax_7 = string(fbk13_Bwmax_7,format='(I6)')
-		fbk13_Bwmax_8 = string(fbk13_Bwmax_8,format='(I6)')
-		fbk13_Bwmax_9 = string(fbk13_Bwmax_9,format='(I6)')
-		fbk13_Bwmax_10 = string(fbk13_Bwmax_10,format='(I6)')
-		fbk13_Bwmax_11 = string(fbk13_Bwmax_11,format='(I6)')
-		fbk13_Bwmax_12 = string(fbk13_Bwmax_12,format='(I6)')
-
+		fbk7_Ewmax_3 = string(fbk7_Ewmax_3,format='(f8.1)')
+		fbk7_Ewmax_4 = string(fbk7_Ewmax_4,format='(f8.1)')
+		fbk7_Ewmax_5 = string(fbk7_Ewmax_5,format='(f8.1)')
+		fbk7_Ewmax_6 = string(fbk7_Ewmax_6,format='(f8.1)')
+		fbk7_Bwmax_3 = string(fbk7_Bwmax_3,format='(f8.1)')
+		fbk7_Bwmax_4 = string(fbk7_Bwmax_4,format='(f8.1)')
+		fbk7_Bwmax_5 = string(fbk7_Bwmax_5,format='(f8.1)')
+		fbk7_Bwmax_6 = string(fbk7_Bwmax_6,format='(f8.1)')
+		fbk13_Ewmax_6 = string(fbk13_Ewmax_6,format='(f8.1)')
+		fbk13_Ewmax_7 = string(fbk13_Ewmax_7,format='(f8.1)')
+		fbk13_Ewmax_8 = string(fbk13_Ewmax_8,format='(f8.1)')
+		fbk13_Ewmax_9 = string(fbk13_Ewmax_9,format='(f8.1)')
+		fbk13_Ewmax_10 = string(fbk13_Ewmax_10,format='(f8.1)')
+		fbk13_Ewmax_11 = string(fbk13_Ewmax_11,format='(f8.1)')
+		fbk13_Ewmax_12 = string(fbk13_Ewmax_12,format='(f8.1)')
+		fbk13_Bwmax_6 = string(fbk13_Bwmax_6,format='(f8.1)')
+		fbk13_Bwmax_7 = string(fbk13_Bwmax_7,format='(f8.1)')
+		fbk13_Bwmax_8 = string(fbk13_Bwmax_8,format='(f8.1)')
+		fbk13_Bwmax_9 = string(fbk13_Bwmax_9,format='(f8.1)')
+		fbk13_Bwmax_10 = string(fbk13_Bwmax_10,format='(f8.1)')
+		fbk13_Bwmax_11 = string(fbk13_Bwmax_11,format='(f8.1)')
+		fbk13_Bwmax_12 = string(fbk13_Bwmax_12,format='(f8.1)')
 
 
 
 ;		if finite(min_sep) ne 0 then begin
 
-			openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun,/append
-		;	printf,lun,tmidtmp+lshell_min+mlt_min+min_sep+min_dL+min_dMLT+max_flux_col+max_flux_sur+nsec_emf+nsec_b1+nsec_b2+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
-			printf,lun,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
-			mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_flux_col+max_flux_sur+$
-			nsec_emf+nsec_b1+nsec_b2+$
-			totalnonchorusspec_E+maxnonchorusspec_E+avgnonchorusspec_E+mediannonchorusspec_E+$
-			totalchorusspecL_E+maxchorusspecL_E+avgchorusspecL_E+medianchorusspecL_E+$
-			totalchorusspecU_E+maxchorusspecU_E+avgchorusspecU_E+medianchorusspecU_E+$
-			totalnonchorusspec_B+maxnonchorusspec_B+avgnonchorusspec_B+mediannonchorusspec_B+$
-			totalchorusspecL_B+maxchorusspecL_B+avgchorusspecL_B+medianchorusspecL_B+$
-			totalchorusspecU_B+maxchorusspecU_B+avgchorusspecU_B+medianchorusspecU_B+$
-			fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+$
-			fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+$
-			fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+$
-			fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
-			close,lun
-			free_lun,lun
+		openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun,/append
+	;	printf,lun,tmidtmp+lshell_min+mlt_min+min_sep+min_dL+min_dMLT+max_counts_col+max_counts_sur+nsec_emf+nsec_b1+nsec_b2+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
+		printf,lun,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
+		mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_counts_col+max_counts_sur+max_HRflux_col+max_HRflux_sur+$
+		nsec_hires+nsec_emf+nsec_b1+nsec_b2+$
+		totalnonchorusspec_E+maxnonchorusspec_E+avgnonchorusspec_E+mediannonchorusspec_E+$
+		totalchorusspecL_E+maxchorusspecL_E+avgchorusspecL_E+medianchorusspecL_E+$
+		totalchorusspecU_E+maxchorusspecU_E+avgchorusspecU_E+medianchorusspecU_E+$
+		totalnonchorusspec_B+maxnonchorusspec_B+avgnonchorusspec_B+mediannonchorusspec_B+$
+		totalchorusspecL_B+maxchorusspecL_B+avgchorusspecL_B+medianchorusspecL_B+$
+		totalchorusspecU_B+maxchorusspecU_B+avgchorusspecU_B+medianchorusspecU_B+$
+		fbk7_Ewmax_3+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_3+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+$
+		fbk13_Ewmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+$
+		fbk13_Bwmax_6+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
+		close,lun
+		free_lun,lun
 
 
 
