@@ -17,8 +17,11 @@ if KEYWORD_SET(hires) then $
   suffix = '_conjunction_values_hr.txt' else $
   suffix = '_conjunction_values.txt'
 
+;Grab local path to save data
+homedir = (file_search('~',/expand_tilde))[0]+'/'
 
-path = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPa_FU3_burst_minutes/'
+
+path = homedir + 'Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPa_FU3_burst_minutes/'
 fn = 'RBSPa_FU3'+suffix
 openr,lun,path+fn,/get_lun
 jnk = ''
@@ -61,7 +64,7 @@ free_lun,lun
 
 
 
-path = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPa_FU4_burst_minutes/'
+path = homedir+'Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPa_FU4_burst_minutes/'
 fn = 'RBSPa_FU4'+suffix
 openr,lun,path+fn,/get_lun
 jnk = ''
@@ -90,7 +93,7 @@ free_lun,lun
 
 
 
-path = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPb_FU3_burst_minutes/'
+path = homedir+'Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPb_FU3_burst_minutes/'
 fn = 'RBSPb_FU3'+suffix
 openr,lun,path+fn,/get_lun
 jnk = ''
@@ -118,7 +121,7 @@ close,lun
 free_lun,lun
 
 
-path = '/Users/aaronbreneman/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPb_FU4_burst_minutes/'
+path = homedir+'Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSPb_FU4_burst_minutes/'
 fn = 'RBSPb_FU4'+suffix
 openr,lun,path+fn,/get_lun
 jnk = ''
