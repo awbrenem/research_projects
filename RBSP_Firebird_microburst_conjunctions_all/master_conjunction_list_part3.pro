@@ -278,7 +278,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			get_data,'rbsp'+probe+'_emfisis_burst',dx1,d1
 			store_data,'rbsp'+probe+'_emfisis_burst',[dx0,dx1],[d0,d1]
 			store_data,'rbsp'+probe+'_emfisis_burst1',/del
-
 		endif
 
 
@@ -799,22 +798,28 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 	;	rbsp_detrend,'fb_col_flux_tc',0.2
 	;	tplot,[strlowcase(fb)+'_fb_col_hires_flux','fb_col_flux_tc','fb_col_flux_tc_detrend']
+		
+		;Figure out if we're dealing with e12 or e34 for FBK data 
+		tstvar = tnames('rbsp'+probe+'_efw_fbk7_e??dc_pk')
+		if tstvar ne '' then e1234 = strmid(tstvar,15,3)		
+		tstvar = tnames('rbsp'+probe+'_efw_fbk13_e??dc_pk')
+		if tstvar ne '' then e1234 = strmid(tstvar,16,3)
 
 
 		;---------------------------------------------------------------
 		;Find max filterbank value in various bins for FBK7 mode
-		get_data,'rbsp'+probe+'_efw_fbk7_e12dc_pk',data=dat
-		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk7_e12dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk7_e12dc_pk_tc'
+		get_data,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',data=dat
+		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc'
 		get_data,'rbsp'+probe+'_efw_fbk7_scmw_pk',data=dat
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk7_scmw_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk7_scmw_pk_tc'
 		;Find max filterbank value in various bins for FBK13 mode
-		get_data,'rbsp'+probe+'_efw_fbk13_e12dc_pk',data=dat
-		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk13_e12dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk13_e12dc_pk_tc'
+		get_data,'rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk',data=dat
+		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk_tc'
 		get_data,'rbsp'+probe+'_efw_fbk13_scmw_pk',data=dat
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk13_scmw_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk13_scmw_pk_tc'
 
 
-		get_data,'rbsp'+probe+'_efw_fbk7_e12dc_pk_tc',data=dat
+		get_data,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc',data=dat
 		if is_struct(dat) then begin
 			fbk7_Ewmax_3 = float(max(dat.y[*,3],/nan))  ;50-100 Hz
 			fbk7_Ewmax_4 = float(max(dat.y[*,4],/nan))  ;200-400 Hz
@@ -839,17 +844,17 @@ for j=0.,n_elements(tfb0)-1 do begin
 			fbk7_Bwmax_6 = !values.f_nan
 		endelse
 
-;tplot,['rbsp'+probe+'_efw_fbk7_e12dc_pk_tc','rbsp'+probe+'_efw_fbk7_scmw_pk_tc']
+;tplot,['rbsp'+probe+'_efw_fbk7_e??dc_pk_tc','rbsp'+probe+'_efw_fbk7_scmw_pk_tc']
 ;stop
 
 		;Find max filterbank value in various bins for FBK13 mode
-		get_data,'rbsp'+probe+'_efw_fbk13_e12dc_pk_tc',data=dat
+		get_data,'rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk_tc',data=dat
 		if is_struct(dat) then begin
-			fbk13_Ewmax_6 = float(max(dat.y[*,6],/nan))   ;100-200 Hz
+			fbk13_Ewmax_6 = float(max(dat.y[*,6],/nan))   ;50-100 Hz
 			fbk13_Ewmax_7 = float(max(dat.y[*,7],/nan))   ;100-200 Hz
 			fbk13_Ewmax_8 = float(max(dat.y[*,8],/nan))   ;200-400 Hz
 			fbk13_Ewmax_9 = float(max(dat.y[*,9],/nan))   ;400-800 Hz
-			fbk13_Ewmax_10 = float(max(dat.y[*,10],/nan)) ;0.8-1.5 kHz
+			fbk13_Ewmax_10 = float(max(dat.y[*,10],/nan)) ;0.8-1.6 kHz
 			fbk13_Ewmax_11 = float(max(dat.y[*,11],/nan)) ;1.6-3.2 kHz
 			fbk13_Ewmax_12 = float(max(dat.y[*,12],/nan)) ;3.2-6.5 kHz
 		endif else begin
@@ -1003,7 +1008,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 		print,lshell_min_rb,'  ',lshell_min_fb,'   ',min_dl
 		print,mlt_min_rb,'   ',mlt_min_fb,'   ',min_dmlt
 
-	stop
 
 
 		totalnonchorusspec_E = string(totalnonchorusspec_E,format='(F27.11)')
@@ -1035,6 +1039,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		maxchorusspecU_B = string(maxchorusspecU_B,format='(F20.11)')
 		avgchorusspecU_B = string(avgchorusspecU_B,format='(F20.11)')
 		medianchorusspecU_B = string(medianchorusspecU_B,format='(F20.11)')
+
 
 
 		fbk7_Ewmax_3 = string(fbk7_Ewmax_3,format='(f8.1)')
