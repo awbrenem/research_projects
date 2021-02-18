@@ -27,20 +27,64 @@
 
 
 
+;******************************************
+;Test to see how well we'll be able to resolve the microbursts 
+;given an instrument noise level plus a background level of 
+;"microburst noise" that I think occurs due to edge-detection of 
+;other microbursts. 
+;*************************************
+;Highest bin with visible microburst --> 2016-08-30/20:47:28 dispersive smallish amplitude uB
+;f0tmp = 120. ;Flux at 0 keV
+;E0tmp = 100.
+;epow = 1.2
+  ;5bin : 721-985
+  ;10bin: 721-853
+  ;20bin: 767-809
+  ;40bin: 753-773
+  ;65bin: 720-732
+;**RESULT: EVEN WITH 65 BINS WE CAN RESOLVE THIS SMALLISH AMPLITUDE MICROBURST
+;*************************************
+
+;Highest bin with visible microburst () --> typical FB microburst using Arlo's statistics
+;More typical uB with epow=1
+;f0tmp = 1000. ;Flux at 0 keV
+;E0tmp = 70.
+;epow = 1.
+  ;5bin :
+  ;10bin:
+  ;20bin: 
+  ;40bin: 
+  ;50bin: 
+  ;60bin: 
+;*************************************
+
+
 
 rbsp_efw_init
 !p.charsize = 1.5
 
+;***********************************
+;***********************************
+;Harlan says 12 keV channels doable
+;FWHM is 12 keV for noise. (typically set threshold 3x noise)
+;Can go even lower in energy. 
+;--mention that an even lower energy threshold would make dispersion more obvious (Saito)
+;***********************************
 
-;Load up spec of real microburst (from microburst_fit_slope.pro) so that I can set the 
-;simulated uB parameters
-tplot_restore,filename='/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/realistic_uB_spec_20160830_2047-2048.tplot'
-;Note that times for the realistic spec have been shifted so that they start at 2014-01-01, just like
-;the simulated microburst here. 
-tplot,['ub_spec_after_detection_realuB']
+;--Give Chris two names to read proposal (two weeks from next Tuesday)
+;-Arlo, Alex Crew
+;***********************************
 
-;Determine max flux of 220 keV bin 
-get_data,'ub_spec_after_detection_realuB',data=dd
+
+;;Load up spec of real microburst (from microburst_fit_slope.pro) so that I can set the 
+;;simulated uB parameters
+;tplot_restore,filename='/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/realistic_uB_spec_20160830_2047-2048.tplot'
+;;Note that times for the realistic spec have been shifted so that they start at 2014-01-01, just like
+;;the simulated microburst here. 
+;tplot,['ub_spec_after_detection_realuB']
+;
+;;Determine max flux of 220 keV bin 
+;get_data,'ub_spec_after_detection_realuB',data=dd
 
 ;Flux max for 220 keV bin
 ;print,max(dd.y[*,0])
@@ -51,10 +95,50 @@ get_data,'ub_spec_after_detection_realuB',data=dd
 ;------------------------------------------------------------------------
 
 ;Flux max for the ~220 keV FIREBIRD bin (from observations)
-f0 = 25.   
+;f0 = 25.   ;flux
+;f0 = 1000.  ;counts   
+
+
+;Determine f0 (flux in 1/(cm2-s-sr-keV) at 200 keV) by extrapolating Arlo's flux results (for 0 keV) to 220 keV. 
+
+;;Typical uB
+f0tmp = 1000. ;Flux at 0 keV
+E0tmp = 70.
+
+;;uB at 2016-08-30/20:47:28
+;f0tmp = 120. ;Flux at 0 keV
+;E0tmp = 100.
+
+f0 = f0tmp*exp(-1*220./E0tmp)  ;typical uB flux at 220 keV
+
+
+
+
+;Set detector cadence
+detector_cadence = 0.025 ;sec 
+
 
 ;multiplicative factor for the noise.
-noise_scalefac = 0.
+noise_scalefac = 0.01
+
+;Add in contaminating microburst "noise" at sample rate cadence
+;These are the sample rate bumps you see in real data that may correspond to 
+;edge-detected microbursts?
+;This "noise" is channel dependent. I'll set it at a fraction of the peak value 
+;detected in each channel (noise_from_uB_fraction). NOTE: this value will need to be 
+;abnormally high b/c the detectors integrate over many adjacent (1000x) energy bins and 
+;the noise tends to disappear to unrealistically low values. For example, if you want the 
+;noise in the realistic uB (say energy channel 500) to be 10% of the max value in that channel, 
+;you would set noise_from_uB_fraction >> 0.1. 
+;Just adjust so that things look real. 
+noise_from_uB_fraction = 3.  ;--> determined by comparison to 2016-08-30/20:47:28 dispersive event
+;noise_from_uB_fraction = 0.  ;--> determined by comparison to 2016-08-30/20:47:28 dispersive event
+
+
+
+
+
+
 
 ;energy profile ("infinite" resolution uB) --> exp(-(E-Eo)^epow/dE^epow)
 nenergies = 1000. ;number of microburst energy steps
@@ -63,7 +147,7 @@ emax_keV = 1000.
 energies_uB = (emax_keV - emin_keV)*indgen(nenergies)/(nenergies-1) + emin_keV   ;creates a 1000 element array
 Eo = 0. ;Center energy for Gaussian
 dE = 100. ;Width of energy Gaussian curve (keV)
-epow = 1.2  ;typically=1     flux[*,i] *= exp(-1*(energies_uB - Eo)^epow/dE^epow)
+epow = 1.  ;typically=1     flux[*,i] *= exp(-1*(energies_uB - Eo)^epow/dE^epow)
 
 
 ;time profile  (exp(-(t-to)^2/dt^2))
@@ -87,20 +171,24 @@ fbhig = [283.,384.,520.,721.,985.]
 ;fbhig = [520.,721.]
 
 
-;;Hypothetical channels
-;fblow2 = [220.,251.,283.,333.,384.,452.,520.,620.,721.,853.]
-;fbhig2 = [251.,283.,333.,384.,452.,520.,620.,721.,853.,985.]
+;;Hypothetical 10 channels
+;fblow = [220.,251.,283.,333.,384.,452.,520.,620.,721.,853.]
+;fbhig = [251.,283.,333.,384.,452.,520.,620.,721.,853.,985.]
 ;;plot,indgen(n_elements(fblow)),fblow,psym=-2
 ;;oplot,indgen(n_elements(fblow2))/2.,fblow2,color=250,psym=-4
 ;fblow = fblow2 
 ;fbhig = fbhig2
 
 ;;Extremely hires channels
-;nch = 20.
+;nch = 65.
 ;fblow = (1000 - 200.)*indgen(nch)/(nch-1) + 220.
 ;fbhig = shift(fblow,-1)
-;fbhig[n_elements(fbhig)-1] = 1000.
+;fbhig[n_elements(fbhig)-1] = 1040.
 
+;nch = 5.
+;fblow = (1000 - 200.)*indgen(nch)/(nch-1) + 220.
+;fbhig = shift(fblow,-1)
+;fbhig[n_elements(fbhig)-1] = 1040.
 
 
 nchannels = n_elements(fblow)
@@ -204,18 +292,72 @@ zlim,'ub_spec_nonoise',0.1,f0,1
 tplot,['ub_timevariation','ub_spec_nonoise']
 
 
+;fluxN = flux
+;for ee=0.,nenergies-1 do begin $
+;  etmp = ee & $
+;  noise = noise_scalefac*(randomu(etmp,ntsteps) - 1.) & $
+;  noiseS = noise * sqrt(max(flux[*,*]) - flux[ee,*]) & $
+;  fluxN[ee,*] += noiseS
+;endfor
+;flux = fluxN
 
+;;Now add in instrumental noise spectrum to this. This will only effect channels
+;with low counts.  
+noisetimesteps = tend_sec/detector_cadence
+noisetimes = tend_sec*indgen(noisetimesteps)/(noisetimesteps-1)
+noiseN = fltarr(nenergies,noisetimesteps)
 
-;Now add in a noise spectrum to this. 
 fluxN = flux
-
-!p.multi = [0,0,4]
 for ee=0.,nenergies-1 do begin $
   etmp = ee & $
-  noise = noise_scalefac*(2*randomu(etmp,ntsteps) - 1.) & $
+  noise = noise_scalefac*(randomu(etmp,noisetimesteps)) & $
   noiseS = noise * sqrt(max(flux[*,*]) - flux[ee,*]) & $
-  fluxN[ee,*] += noiseS
+  noiseN[ee,*] = noiseS
 endfor
+;Increase the cadence of noise array to the full time cadence. 
+noiseF = fltarr(nenergies,ntsteps)
+for i=0,nenergies-1 do noiseF[i,*] = interpol(reform(noiseN[i,*]),noisetimes,times_sec)
+fluxN = flux + noiseF
+
+;stop
+
+flux = fluxN
+
+
+
+
+;Add in contaminating microburst "noise" at sample rate cadence
+;These are the sample rate bumps you see in real data that may correspond to 
+;edge-detected microbursts?
+;This "noise" is channel dependent. I'll set it at a fraction of the peak value 
+;detected in each channel (noise_from_uB_fraction). NOTE: this value will need to be 
+;abnormally high b/c the detectors integrate over many adjacent (1000x) energy bins and 
+;the noise tends to disappear to unrealistically low values. For example, if you want the 
+;noise in the realistic uB (say energy channel 500) to be 10% of the max value in that channel, 
+;you would set noise_from_uB_fraction >> 0.1. 
+;Just adjust so that things look real. 
+
+
+noisetimesteps = tend_sec/detector_cadence
+noisetimes = tend_sec*indgen(noisetimesteps)/(noisetimesteps-1)
+noiseN = fltarr(nenergies,noisetimesteps)
+
+for ee=0.,nenergies-1 do begin $
+  etmp = ee & $
+  noiseamp = noise_from_uB_fraction * max(flux[ee,*],/nan) & $
+  tmp = randomu(etmp,noisetimesteps) & $ 
+  noise = noiseamp*tmp & $
+  noiseN[ee,*] = noise
+endfor
+;Increase the cadence of noise array to the full time cadence. 
+noiseF = fltarr(nenergies,ntsteps)
+for i=0,nenergies-1 do noiseF[i,*] = interpol(reform(noiseN[i,*]),noisetimes,times_sec)
+;!p.multi = [0,0,2]
+;plot,noiseN[20,*]
+;plot,noiseF[20,*]
+fluxN = flux + noiseF
+;plot,fluxN[300,*]
+;stop
 
 
 
@@ -442,6 +584,8 @@ tplot_save,'*',filename='~/Desktop/fb_ub_5channel'
 tplot_save,'*',filename='~/Desktop/fb_ub_10channel'
 tplot_save,'*',filename='~/Desktop/fb_ub_5channel_nonoise_recreation_of_20160830_2047-2048'
 tplot_save,'*',filename='~/Desktop/fb_ub_10channel_nonoise_recreation_of_20160830_2047-2048'
+tplot_save,'*',filename='~/Desktop/fb_ub_20channel_nonoise_recreation_of_20160830_2047-2048'
+tplot_save,'*',filename='~/Desktop/fb_ub_40channel_nonoise_recreation_of_20160830_2047-2048'
 
 ;-------------------------------------------------------
 
