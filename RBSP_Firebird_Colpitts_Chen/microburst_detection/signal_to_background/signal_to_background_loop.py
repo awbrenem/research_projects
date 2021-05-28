@@ -2,11 +2,10 @@ import numpy as np
 import pandas as pd
 import pathlib
 import progressbar
-
 import spacepy
-
 import signal_to_background
 import microburst_detection.dirs
+
 
 class SignalToBackgroundLoop:
     def __init__(self, sc_id, background_width_s, std_thresh, detect_channel=0):
@@ -75,9 +74,18 @@ class SignalToBackgroundLoop:
                 self.background_width_s
                 )
             s.significance()
+            """
             try:
                 s.find_microburst_peaks(std_thresh=self.std_thresh, 
                                         detect_channel=detect_channel)
+            except ValueError as err:
+                if str(err) == 'No detections found':
+                    continue
+                else:
+                    raise
+            """
+            try:
+                s.find_microburst_peaks(std_thresh=self.std_thresh)
             except ValueError as err:
                 if str(err) == 'No detections found':
                     continue
@@ -121,10 +129,10 @@ class SignalToBackgroundLoop:
         self.microburst_list.to_csv(pathlib.Path(save_dir, save_name), 
                                     index=False)
         return
-            
+
 
 if __name__ == '__main__':
-    sc_id = 4
+    sc_id = 3
     background_width_s = 2
     std_thresh = 10
 

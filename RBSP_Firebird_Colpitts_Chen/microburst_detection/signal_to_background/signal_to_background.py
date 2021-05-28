@@ -2,9 +2,11 @@ import pandas as pd
 import pathlib
 import matplotlib.pyplot as plt
 import numpy as np
-
 import spacepy
-
+import sys
+sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/')
+sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/microburst_detection/')
+sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/microburst_detection/signal_to_background/')
 from microburst_detection import dirs
 from microburst_detection.misc.locate_consecutive_numbers import locateConsecutiveNumbers
 
@@ -141,7 +143,7 @@ class FirebirdSignalToBackground(SignalToBackground):
 
 
 if __name__ == '__main__':
-    hr_name = 'FU4_Hires_2019-09-27_L2.txt'
+    hr_name = 'FU3_Hires_2015-02-01_L2.txt'
     background_width_s = 2
     std_thresh = 10
     sc_id = hr_name[2]

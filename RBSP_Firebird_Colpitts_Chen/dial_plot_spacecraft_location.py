@@ -8,8 +8,6 @@ either at a regular time cadence or at times of the FIREBIRD/RBSP conjunctions (
 ------------------------------------------------------
 Note on various payloads:
 
--AEROCUBE-6 (Bern emailed about data access)
-
 -ELFIN (Angeloupolos CubeSats that measure energetic precip).
 Data availability at https://elfin-data.epss.ucla.edu/tohban_reports/tohban_report_010620.txt
 There may be a few conjunctions where useful ELFIN data exists.
@@ -34,7 +32,7 @@ import numpy as np
 import pytplot
 
 import sys
-sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/RBSP_Firebird_Colpitts_Chen/')
+sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/')
 from Rbsp_fb_filter_conjunctions import Rbsp_fb_filter_conjunctions
 from Load_firebird_data import Load_firebird_data
 
@@ -56,9 +54,6 @@ BARREL 2014 mission
 p2 = ['2T','2I','2K','2L','2M','2N','2O','2P','2Q','2W','2X','2Y','2A','2B','2C','2D','2E','2F']
 BARREL 2015 mission (over before FIREBIRD mission starts)
 p3 = ['3A','3D','3G','3B','3E']
-
-
-
 
 
 BARREL 2013 mission
@@ -182,22 +177,30 @@ rbb = pycdf.CDF(path+"rbspb_20200327105258_95241.cdf")
 tha = pycdf.CDF(path+"themisa_20200327104047_82094.cdf") #A,D,E always in close orbit, so I'll only plot A
 thb = pycdf.CDF(path+"themisb_20200327104245_83794.cdf") #B,C are ARTEMIS
 thc = pycdf.CDF(path+"themisc_20200327104318_84229.cdf")
+ac6a = pycdf.CDF(path+"aerocube6b_20201204112040_82593.cdf")
+ac6b = pycdf.CDF(path+"aerocube6a_20201204112040_82593.cdf")
 #thd = pycdf.CDF(path+"themisd_20200327104401_85684.cdf")
 #the = pycdf.CDF(path+"themise_20200327104435_87026.cdf")
 
-markers2 = []
-satlabels = ["AR","CL","MMS","RBa","RBb","THade","THb","THc"]
-colors = ["red","brown","black","blue","blue","teal","teal","teal"]
+noaa15 = pycdf.CDF(path+"noaa15_20201204113810_88865.cdf")
+noaa16 = pycdf.CDF(path+"noaa16_20201204113810_88865.cdf")
+noaa17 = pycdf.CDF(path+"noaa17_20201204113810_88865.cdf")
+noaa18 = pycdf.CDF(path+"noaa18_20201204113810_88865.cdf")
+noaa19 = pycdf.CDF(path+"noaa19_20201204113810_88865.cdf")
+noaa20 = pycdf.CDF(path+"noaa20_20201204113810_88865.cdf")
+metop1b = pycdf.CDF(path+"metop1b_20201204113810_88865.cdf")
+metop2a = pycdf.CDF(path+"metop2a_20201204113810_88865.cdf")
+metopc = pycdf.CDF(path+"metopc_20201204113810_88865.cdf")
 
-#goo = ["rba"]
+satlabels = ["AR","CL","MMS","RBa","RBb","THade","THb","THc","AC6a","AC6b","NOAA15","NOAA16","NOAA17","NOAA18","NOAA19","NOAA20","MOP1b","MOP2a","MOPc"]
+colors = ["red","brown","black","blue","blue","teal","teal","teal","red","red","green","green","green","green","green","green","green","green","green"]
+
+markers2 = []
 markers2.append(["$"+q+"$" for q in satlabels])
 markers2 = markers2[0]
 
 #List of all the CDF files
-cdfs = [arase,c1,mms1,rba,rbb,tha,thb,thc]
-#cdfs = [rba]
-
-
+cdfs = [arase,c1,mms1,rba,rbb,tha,thb,thc,ac6a,ac6b,noaa15,noaa16,noaa17,noaa18,noaa19,noaa20,metop1b,metop2a,metopc]
 
 
 
@@ -242,10 +245,10 @@ lmax = 12
 mltmin = 0
 mltmax = 24
 
-rbaf3_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"3"})
-rbaf4_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"4"})
-rbbf3_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"3"})
-rbbf4_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"4"})
+rbaf3_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"3", "hires":"1"})
+rbaf4_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"4", "hires":"1"})
+rbbf3_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"3", "hires":"1"})
+rbbf4_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"4", "hires":"1"})
 
 
 rbaf3 = rbaf3_obj.read_conjunction_file()
@@ -382,20 +385,26 @@ for i in a4b:
 
 
 FB_names = []
-for i in range(len(a3af)): FB_names.append("$F3$")
-for i in range(len(a3bf)): FB_names.append("$F3$")
-for i in range(len(a4af)): FB_names.append("$F4$")
-for i in range(len(a4bf)): FB_names.append("$F4$")
+RB_names = []
+for i in range(len(a3af)): FB_names.append("F3")
+for i in range(len(a3bf)): FB_names.append("F3")
+for i in range(len(a4af)): FB_names.append("F4")
+for i in range(len(a4bf)): FB_names.append("F4")
+for i in range(len(a3af)): RB_names.append("RBa")
+for i in range(len(a3bf)): RB_names.append("RBb")
+for i in range(len(a4af)): RB_names.append("RBa")
+for i in range(len(a4bf)): RB_names.append("RBb")
 
+#concatenate all of the arrays
 tfinal = a3af + a3bf + a4af + a4bf
 FB_Lfinal = L3a_fb + L3b_fb + L4a_fb + L4b_fb
 RB_Lfinal = L3a_rb + L3b_rb + L4a_rb + L4b_rb
 mtmp = MLT3a_fb + MLT3b_fb + MLT4a_fb + MLT4b_fb
 FB_MLTfinal = []
-for i in mtmp: FB_MLTfinal.append(math.radians(360*(i/24)))
+for i in mtmp: FB_MLTfinal.append(math.radians(360*(i/24)-180.))
 mtmp = MLT3a_rb + MLT3b_rb + MLT4a_rb + MLT4b_rb
 RB_MLTfinal = []
-for i in mtmp: RB_MLTfinal.append(math.radians(360*(i/24)))
+for i in mtmp: RB_MLTfinal.append(math.radians(360*(i/24)-180.))
 btotfin = btot3a_fb + btot3b_fb + btot4a_fb + btot4b_fb
 fluxmaxfb = fluxmax3a_fb + fluxmax3b_fb + fluxmax4a_fb + fluxmax4b_fb
 maxE = maxE3a_fb + maxE3b_fb + maxE4a_fb + maxE4b_fb
@@ -405,10 +414,22 @@ maxB = maxB3a_fb + maxB3b_fb + maxB4a_fb + maxB4b_fb
 
 strvals = []
 for i in range(len(btotfin)):
-    goo1 = "Bursttot=" + str(round(btotfin[i])) + ' min'
-    goo2 = "fluxmax=" + str(round(fluxmaxfb[i])) + ' #/s-cm2-sr'
-    goo3 = "Emax=" + str(round(maxE[i])) + ' mV/m'
-    goo4 = "Bmax=" + str(round(maxB[i])) + ' pT'
+    if not math.isnan(btotfin[i]):
+        goo1 = "Bursttot=" + str(round(btotfin[i])) + ' min'
+    else:
+        goo1 = "Bursttot=NaN min"
+    if not math.isnan(fluxmaxfb[i]):
+        goo2 = "fluxmax=" + str(round(fluxmaxfb[i])) + ' #/s-cm2-sr'
+    else:
+        goo2 = "fluxmax=NaN #/s-cm2-sr"
+    if not math.isnan(maxE[i]):
+        goo3 = "Emax=" + str(round(maxE[i])) + ' mV/m'
+    else:
+        goo3 = "Emax=NaN mV/m"
+    if not math.isnan(maxB[i]):
+        goo4 = "Bmax=" + str(round(maxB[i])) + ' pT'
+    else:
+        goo4 = "Bmax=NaN pT"
     goo = goo1 + ',\n' + goo2 + ',\n' + goo3 + ',\n' + goo4
     strvals.append(goo)
 
@@ -427,18 +448,28 @@ theta = 2 * np.pi * r
 #datetime.datetime(2016, 8, 14, 0, 52)
 
 
-initialtimeindex = 10
+initialtimeindex = 0
+#initialtimeindex = 10  #for testing BARREL plotting
 i=initialtimeindex
 for t in tfinal[initialtimeindex:]:
 
 
-#    #Get FIREBIRD data for current conjunction
-#    params = {'type':'hires','cubesat':'FU3','date':t.date()}
-#    fb3 = Load_firebird_data(params)
-#    fbdat3 = fb3.download_file()
-#    params = {'type':'hires','cubesat':'FU4','date':t.date()}
-#    fb4 = Load_firebird_data(params)
-#    fbdat4 = fb4.download_file()
+    #Get FIREBIRD data for current conjunction for payload that is NOT in conjunction.
+    #e.g. for a RBSPa-FU3 conjunction, load the FU4 data so we can plot it on dial plot
+
+    #-----LOAD CDF FILES HERE
+    pathFU = " "
+    if FB_names[i] == 'F3':
+        pathFU = '/Users/aaronbreneman/data/firebird/FU4/'+t.strftime("%Y")+'/'+"FU4_context_"+t.strftime("%Y%m%d")+"_v01.cdf"
+    else:
+        pathFU = '/Users/aaronbreneman/data/firebird/FU3/'+t.strftime("%Y")+'/'+"FU3_context_"+t.strftime("%Y%m%d")+"_v01.cdf"
+
+    startindfb_other = -1
+
+    if os.path.exists(pathFU):
+        FUother = pycdf.CDF(pathFU)
+        startindfb_other = bisect.bisect_left(FUother["epoch"],t)
+
 
 
 
@@ -465,7 +496,7 @@ for t in tfinal[initialtimeindex:]:
     fd2 = {'fontsize':8,
            'verticalalignment':'bottom',
            'horizontalalignment':'left'}
-    ax.set_title(strvals[i], fontdict=fd2)
+    #ax.set_title(strvals[i], fontdict=fd2)
 
 
 
@@ -487,8 +518,36 @@ for t in tfinal[initialtimeindex:]:
     #Plot FIREBIRD location
     #    ax.scatter([fbrad3,fbrad3],[fbl3,fbl3],s=[500,500],marker="$FB3$",clip_on=False)
     #    ax.scatter([fbrad4,fbrad4],[fbl4,fbl4],s=[500,500],marker="$FB4$",clip_on=False)
-    ax.scatter([FB_MLTfinal[i],FB_MLTfinal[i]],[FB_Lfinal[i],FB_Lfinal[i]],s=[500,500],marker=FB_names[i],clip_on=False,alpha=0.15)
+    ax.scatter([FB_MLTfinal[i],FB_MLTfinal[i]],[FB_Lfinal[i],FB_Lfinal[i]],s=[500,500],marker="$"+FB_names[i]+"$",clip_on=False,alpha=0.15)
     #ax.scatter([fbrad4,fbrad4],[fbl4,fbl4],s=[500,500],marker="$FB4$",clip_on=False)
+
+    #---FOR A TEST PLOT RB LFINAL AND MLTFINAL (NOTE: THIS IS ONLY FOR THE SATELLITE OF THE CONJUNCTION PAIR)
+    #ax.scatter([RB_MLTfinal[i],RB_MLTfinal[i]],[RB_Lfinal[i],RB_Lfinal[i]],s=[500,500],marker="X",clip_on=False,alpha=0.15)
+
+
+    #Overplot the rough location of the FIREBIRD cubesat that is NOT in conjunction.
+    #NOTE: ---I MAY NEED TO INTERPOLATE THESE TO HIGHER CADENCE
+
+
+
+    #make sure times for FIREBIRD not in conjunction are close to time of conjunction.
+    lltst = len(FUother["epoch"])
+    slitst = startindfb_other
+    if startindfb_other != -1 and startindfb_other < len(FUother["epoch"]):
+        timegoo = FUother["epoch"][startindfb_other]
+        dttst = FUother["epoch"][startindfb_other] - t
+        mlttst = FUother["MLT"][startindfb_other]
+        ltst = FUother["McIlwainL"][startindfb_other]
+        mltother = math.radians(360*(mlttst/24)-180.)
+
+        if dttst.total_seconds() < 10:   #only consider plotting if there is data within 10 sec of the conjunction
+            if FB_names[i] == 'F3':
+                ax.scatter([mltother,mltother],[FUother["McIlwainL"][startindfb_other],FUother["McIlwainL"][startindfb_other]],s=[500,500],marker="$F_4$",clip_on=False,alpha=0.15)
+            else:
+                ax.scatter([mltother,mltother],[FUother["McIlwainL"][startindfb_other],FUother["McIlwainL"][startindfb_other]],s=[500,500],marker="$F_3$",clip_on=False,alpha=0.15)
+
+
+    #----CHECK TO SEE IF THIS IS CORRECT
     i=i+1
 
 
@@ -501,7 +560,6 @@ for t in tfinal[initialtimeindex:]:
         #Grab start/stop indices for each balloon
         startind = bisect.bisect_left(bar4t_dt,t)
 
-        print(j)
         #Only plot if we have balloon data within time range
         if startind != len(bar4t_dt):
             dttst = bar4t_dt[startind] - t
@@ -540,21 +598,27 @@ for t in tfinal[initialtimeindex:]:
             if dttst.total_seconds() < 1000:
 
                 # then grab the data we want
-                #time = cdfs[j]['Epoch'][startind]
                 l = cdfs[j]['L_VALUE'][startind]
                 gse = 6370*cdfs[j]['XYZ_GSE'][startind]
 
 
                 #Calculate MLT from longitude
                 angle_tmp = math.degrees(np.arctan2(gse[1],gse[0]))
-                angle_tmp = angle_tmp - 180
+                angle_tmp = angle_tmp #- 180
                 angle_tmp2 = math.radians(angle_tmp)
+                #for i in mtmp: RB_MLTfinal.append(math.radians(360*(i/24)))
+                #ax.scatter([RB_MLTfinal[i],RB_MLTfinal[i]],[RB_Lfinal[i],RB_Lfinal[i]],s=[500,500],marker="X",clip_on=False,alpha=0.15)
 
 
                 #Plot sc location
                 ax.scatter([angle_tmp2,angle_tmp2],[l,l],s=[500,500],marker=markers2[j],color=colors[j],clip_on=False,alpha=0.15)
 
 
+    #plt.show()
+    FB_names[i]
+    filenamesv = RB_names[i]+"_"+FB_names[i]+"_"+ t.strftime("%Y%m%d_%H%M%S")
+    plt.savefig("/Users/aaronbreneman/Desktop/"+filenamesv)
+    print("finished with time t")
     plt.close()
 
-plt.show()
+#plt.show()

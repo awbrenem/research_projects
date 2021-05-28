@@ -29,15 +29,15 @@ class Rbsp_fb_filter_conjunctions:
 
     #Reads in the conjunction files and returns a dictionary with all the values
     def read_conjunction_file(self):
+        import numpy as np
 
-        path = "/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/RBSP_Firebird_Colpitts_Chen/RBSP_FB_final_conjunction_lists/"
+        path = "/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/"
 
 
-        if self.hires == 1:
+        if self.hires == "1":
             suffix = "_conjunction_values_hr.txt"
         else:
             suffix = "_conjunction_values.txt"
-
 
         fn = "RBSP"+self.rb.lower()+"_FU"+self.fb.lower()+suffix
 
@@ -46,18 +46,20 @@ class Rbsp_fb_filter_conjunctions:
         vals = f.read()
 
         vals = vals.split("\n")
-        header = vals[42]
-        vals = vals[43:len(vals)]
+        header = vals[48]
+        vals = vals[49:len(vals)]
         f.close()
 
         #Header quantities
         headerv = header.split()
         headerv = headerv[3:]  #Don't include the date. This will make headerv the same size as data array
+        headervnp = np.array(headerv) #numpy array of header values
 
         data = []   #array of values for each conjunction time
         timesS = []  #String START times for each conjunction
         timesE = []   #String END times
         timesM = []   #String time of closest approach
+
         for i in range(len(vals[1:])):
             tmpp = vals[i].split()
             timesS.append(tmpp[0])
@@ -71,13 +73,22 @@ class Rbsp_fb_filter_conjunctions:
         fbtot = []
         rbtotE = []
         rbtotB = []
+        #locations of certain data quantities
+        whfbk7e = int(np.where(headervnp == '7E3')[0])
+        whfbk7b = int(np.where(headervnp == '7B3')[0])
+        whfbk13e = int(np.where(headervnp == '13E6')[0])
+        whfbk13b = int(np.where(headervnp == '13B6')[0])
+        whcolS = int(np.where(headervnp == 'colS')[0])
+
         for i in range(len(data)):
-            fbtot.append(max(data[i][7:9]))  #FB max flux
-            tmp1 = max(data[i][36:39])
-            tmp2 = max(data[i][42:48])
+            fbtot.append(max(data[i][whcolS:whcolS+3]))  #FB max flux
+
+            tmp1 = max(data[i][whfbk7e:whfbk7e+4])
+            tmp2 = max(data[i][whfbk13e:whfbk13e+7])
             tmpE = max(tmp1,tmp2)
-            tmp1 = max(data[i][39:42])
-            tmp2 = max(data[i][48:54])
+
+            tmp1 = max(data[i][whfbk7b:whfbk7b+4])
+            tmp2 = max(data[i][whfbk13b:whfbk13b+7])
             tmpB = max(tmp1,tmp2)
 
             rbtotE.append(tmpE)
@@ -85,9 +96,12 @@ class Rbsp_fb_filter_conjunctions:
 
 
         #Create new variable that is the total number of burst seconds within +/-60 minutes of closest conjunction
+        whemfb = int(np.where(headervnp == 'EMFb')[0])
+        whb1b = int(np.where(headervnp == 'B1b')[0])
+        whb2b = int(np.where(headervnp == 'B2b')[0])
         bursttot = []
         for i in range(len(data)):
-            bursttot.append(data[i][9]+data[i][10]+data[i][11])
+            bursttot.append(data[i][whemfb]+data[i][whb1b]+data[i][whb2b])
 
 
         #Put the values associated with each header into a dictionary
@@ -144,15 +158,15 @@ class Rbsp_fb_filter_conjunctions:
         import sys
         import matplotlib.pyplot as plt
         import numpy as np
-        sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/RBSP_Firebird_Colpitts_Chen/')
+        sys.path.append('/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_Colpitts_Chen/')
         from Rbsp_fb_filter_conjunctions import Rbsp_fb_filter_conjunctions
 
-        hires = 0   #use only conjunctions with FIREBIRD hires data?
+        hires = "1"   #use only conjunctions with FIREBIRD hires data?
 
 
-#        rbaf3_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"3", "hires":hires})
+        rbaf3_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"3", "hires":hires})
 
-        rbaf4_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"4", "hires":hires})
+#        rbaf4_obj = Rbsp_fb_filter_conjunctions({"rb":"a", "fb":"4", "hires":hires})
 
         #        rbbf3_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"3", "hires":hires})
         #        rbbf4_obj = Rbsp_fb_filter_conjunctions({"rb":"b", "fb":"4", "hires":hires})
@@ -162,7 +176,6 @@ class Rbsp_fb_filter_conjunctions:
         mltmin = 0
         mltmax = 24
 
-        """
         rbaf3 = rbaf3_obj.read_conjunction_file()
         keyv = list(rbaf3.keys())
         rbaf3_1 = rbaf3_obj.filter_based_on_range(rbaf3, "Lrb", lmin, lmax)
@@ -178,12 +191,14 @@ class Rbsp_fb_filter_conjunctions:
         rbaf4_3 = rbaf4_obj.filter_based_on_range(rbaf4_2, "bursttotalmin", 0.01, 10000)
         finv4a = rbaf4_3
 
-        """
+
         rbbf3 = rbbf3_obj.read_conjunction_file()
         rbbf3_1 = rbbf3_obj.filter_based_on_range(rbbf3, "Lrb", lmin, lmax)
         rbbf3_2 = rbbf3_obj.filter_based_on_range(rbbf3_1, "MLTrb", mltmin, mltmax)
         rbbf3_3 = rbbf3_obj.filter_based_on_range(rbbf3_2, "bursttotalmin", 0.01, 10000)
         finv3b = rbbf3_3
+
+    
 
         rbbf4 = rbbf4_obj.read_conjunction_file()
         rbbf4_1 = rbbf4_obj.filter_based_on_range(rbbf4, "Lrb", lmin, lmax)
