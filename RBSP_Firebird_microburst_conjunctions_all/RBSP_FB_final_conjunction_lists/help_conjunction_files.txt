@@ -1,0 +1,103 @@
+Here's the chain of processing that delivered these files. 
+
+
+Mykhaylo Shumko created these files (see folder Schumko_conjunction_lists): 
+	FU3_RBSPA_conjunctions_dL10_dMLT10_final.txt
+	FU3_RBSPB_conjunctions_dL10_dMLT10_final.txt
+	FU4_RBSPA_conjunctions_dL10_dMLT10_final.txt
+	FU4_RBSPB_conjunctions_dL10_dMLT10_final.txt
+
+for each conjunction b/t FIREBIRD and RBSP that occurs within delta-Lshell=1 and delta-MLT=1 hr. 
+
+They contain:
+startTime,endTime,meanL,meanMLT,minMLT,minD [km]
+
+This is somewhat useful, but I really want better info than the mean L and MLT, etc. 
+So, I use these files for the start and end conjunction times and min separation in the 
+program master_conjunction_list_part3.pro. This program outputs the following files: 
+
+	RBSPa_FU3_conjunction_values.txt
+	RBSPa_FU4_conjunction_values.txt
+	RBSPb_FU3_conjunction_values.txt
+	RBSPb_FU4_conjunction_values.txt
+
+or (for conjunctions that include FIREBIRD HiRes data)
+
+	RBSPa_FU3_conjunction_values_hr.txt
+	RBSPa_FU4_conjunction_values_hr.txt
+	RBSPb_FU3_conjunction_values_hr.txt
+	RBSPb_FU4_conjunction_values_hr.txt
+
+
+
+These have the following:
+
+Conjunction data for RBSPa and FU3 from Shumko file FU3_RBSPA_conjunctions_dL10_dMLT10_hr_final.txt
+Tstart = start of conjunction
+Tend = end of conjunction
+Tmin = time of closest conjunction (defined from minimum absolute separation)
+Lrb = L value (rbspa) during min separation time
+Lfb = L value (FU3) during min separation time
+MLTrb = MLT value (rbspa) during min separation time
+MLTfb = MLT value (FU3) during min separation time
+distmin = minimum |separation| in RE b/t rbspa and FU3 at Tminsep
+dLmin = |delta L| of rbspa) during min separation time
+dMLTmin = |delta MLT| of rbspa) during min separation time
+colS = max collimated detector FB survey counts during conjunction
+surS = max surface detector FB survey counts during conjunction
+colHR = max collimated detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)
+surHR = max surface detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)
+FBb = Number seconds hires FIREBIRD data available during conjunction (Tstart and Tend)
+EMFb = number of sec of EMFISIS burst data within +/-60 min of middle conjunction time
+B1b = number of sec of EFW burst 1 data within +/-60 min of middle conjunction time
+B2b = number of sec of EFW burst 2 data within +/-60 min of middle conjunction time
+Total spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+Max   spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Total spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Max   spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+Total spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+Max   spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Total spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Max   spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+The remaining columns are max EFW filter bank amplitudes (pT, mV/m) within +/-60 min of middle conjunction time
+NOTE1: many entries have missing FIREBIRD data, including ephemeris. This is correct, and is more prevelant early in the mission...
+...During these time the RBSP L and MLT values are taken as the AVERAGE value during the conjunction, not the values at the closest approach, which is undefined
+NOTE2: the majority of conjunctions have no FIREBIRD hires data. See the FBb column.
+
+
+Notes on missing FIREBIRD ephemeris (Arlo Johnson email on July 28, 2020): 
+I think Mike is probably correct that you're looking at campaigns when the spacecraft 
+were only operating in the northern hemisphere. I just flipped back through the early 
+campaigns and found campaigns 1-7 were northern hemisphere only. I've attached the L 
+summary plots from those campaigns. There are a few other data gaps, I don't know the 
+cause of those. There are also times when we have data in both hemispheres or sometimes 
+southern only. These are often associated with the start of a month when a known bug in 
+calculating epochs will occur and then fixed a few days into the month.
+
+There have been other times when the spacecraft were not operating full orbit in 
+campaigns 8+, but you should find much more continuous data at that point. There will 
+still be a few random dropouts here and there. Of particular note is FU4 campaign 14 was 
+the first time we saw the time stamp bug that recently happened again to cut campaign 28 
+short, so much of that campaign is missing.
+Unfortunately we do not have any usable count data that's not published online, so there's 
+no filling in the gaps.
+
+
+
+

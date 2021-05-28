@@ -1,0 +1,11 @@
+Hi everyone,
+
+Here are the conjunction files for the entire FIREBIRD mission duration. These filenames contain the "hr" flag which means that they have been filtered by the HiRes data. This code has not been thoroughly validated, so please let me know if you spot a bug.
+
+I've run my conjunction calculator for (dL, dMLT) thresholds of (1, 1), (0.5, 0.5), and (1, 0.5) as some of you requested. As before, the minimum L of the conjunction is 3. I've used T89 for all magnetic fields.
+
+If you are interested in the (0.5, 0.5) conjunctions, consider the (1, 0.5) files instead. The (1, 0.5) files are essentially the same as (0.5, 0.5) files, but have a bigger tolerance for FIREBIRD's rapid cuts through L, and the 1 minute ephemeris resolution.
+
+but were not due to
+
+Mykhaylo Shumko
