@@ -168,6 +168,7 @@ t_ancillary_fu3 = [$
 '2017-12-05/22:58:54.754',$
 '2017-12-05/22:58:55.854',$
 '2017-12-05/22:58:56.254',$
+'2017-12-05/22:58:56.604',$
 '2017-12-05/22:58:58.004',$
 '2017-12-05/22:58:58.154',$
 '2017-12-05/22:58:58.254',$
@@ -175,6 +176,8 @@ t_ancillary_fu3 = [$
 '2017-12-05/22:59:03.404',$
 '2017-12-05/22:59:04.754',$
 '2017-12-05/22:59:06.254',$
+'2017-12-05/22:59:06.904',$
+'2017-12-05/22:59:07.204',$
 '2017-12-05/22:59:18.304',$
 '2017-12-05/22:59:18.554',$
 '2017-12-05/22:59:18.654',$
@@ -184,7 +187,6 @@ t_ancillary_fu3 = [$
 '2017-12-05/22:59:19.204',$
 '2017-12-05/22:59:19.354',$
 '2017-12-05/22:59:19.454',$
-'2017-12-05/22:59:23.904',$
 '2017-12-05/22:59:24.604',$
 '2017-12-05/22:59:24.704',$
 '2017-12-05/22:59:24.904',$
@@ -200,8 +202,6 @@ t_ancillary_fu3 = [$
 '2017-12-05/22:59:44.104',$
 '2017-12-05/23:00:04.705',$
 '2017-12-05/23:00:04.805',$
-'2017-12-05/23:00:05.205',$
-'2017-12-05/23:00:06.155',$
 '2017-12-05/23:00:06.305',$
 '2017-12-05/23:00:06.405',$
 '2017-12-05/23:00:06.505',$
@@ -210,15 +210,24 @@ t_ancillary_fu3 = [$
 '2017-12-05/23:00:08.855',$
 '2017-12-05/23:00:15.105',$
 '2017-12-05/23:00:16.055',$
-'2017-12-05/23:00:22.305',$
 '2017-12-05/23:00:24.605',$
 '2017-12-05/23:00:25.055']
+
+Lvals_fu3a = fltarr(n_elements(t_ancillary_fu3))
+MLTvals_fu3a = fltarr(n_elements(t_ancillary_fu3))
+for i=0,n_elements(t_ancillary_fu3)-1 do Lvals_fu3a[i] = tsample('fu3_fb_mcilwainL_from_hiresfile',time_double(t_ancillary_fu3[i]))
+for i=0,n_elements(t_ancillary_fu3)-1 do MLTvals_fu3a[i] = tsample('fu3_fb_mlt_from_hiresfile',time_double(t_ancillary_fu3[i]))
+
+;Print all FU4 microbursts
+for i=0,n_elements(t_ancillary_fu3)-1 do print,t_ancillary_fu3[i],lvals_fu3a[i],mltvals_fu3a[i]
 
 
 t_ancillary_fu4 = [$
 '2017-12-05/07:27:57.236',$
 '2017-12-05/07:27:58.236',$
 '2017-12-05/07:27:58.436',$
+'2017-12-05/07:28:00.736',$
+'2017-12-05/07:28:01.036',$
 '2017-12-05/07:28:02.536',$
 '2017-12-05/07:28:02.736',$
 '2017-12-05/07:28:03.586',$
@@ -229,7 +238,7 @@ t_ancillary_fu4 = [$
 '2017-12-05/07:28:15.686',$
 '2017-12-05/07:28:21.036',$
 '2017-12-05/07:28:22.236',$
-'2017-12-05/07:28:30.436',$
+'2017-12-05/07:28:30.486',$
 '2017-12-05/07:28:31.186',$
 '2017-12-05/07:28:32.986',$
 '2017-12-05/07:28:37.736',$
@@ -258,8 +267,7 @@ t_ancillary_fu4 = [$
 '2017-12-05/22:45:43.514',$
 '2017-12-05/22:45:51.164',$
 '2017-12-05/22:45:51.414',$
-'2017-12-05/22:45:54.565',$
-'2017-12-05/22:45:54.715',$
+'2017-12-05/22:45:54.115',$
 '2017-12-05/22:45:59.315',$
 '2017-12-05/22:46:00.415',$
 '2017-12-05/22:46:01.215',$
@@ -268,6 +276,13 @@ t_ancillary_fu4 = [$
 '2017-12-05/22:46:08.665']
 
 
+Lvals_fu4a = fltarr(n_elements(t_ancillary_fu4))
+MLTvals_fu4a = fltarr(n_elements(t_ancillary_fu4))
+for i=0,n_elements(t_ancillary_fu4)-1 do Lvals_fu4a[i] = tsample('fu4_fb_mcilwainL_from_hiresfile',time_double(t_ancillary_fu4[i]))
+for i=0,n_elements(t_ancillary_fu4)-1 do MLTvals_fu4a[i] = tsample('fu4_fb_mlt_from_hiresfile',time_double(t_ancillary_fu4[i]))
+
+;Print all FU4 microbursts
+for i=0,n_elements(t_ancillary_fu4)-1 do print,t_ancillary_fu4[i],lvals_fu4a[i],mltvals_fu4a[i]
 
 
 
@@ -849,6 +864,8 @@ options,'fu'+fu+'_fb_col_hires_fluxlog','panel_size',2
 if fu eq '3' then tstart = tstart_fu3 else tstart = tstart_fu4
 if fu eq '3' then tstop = tstop_fu3 else tstop = tstop_fu4
 
+skip = 1 
+if not skip then begin 
 for i=0,nelem-1 do begin
      tlimit,t[i]-4,t[i]+4
      tplot,['fu'+fu+'_fb_col_hires_fluxlog',$
@@ -867,6 +884,38 @@ for i=0,nelem-1 do begin
 ;     timebar,tstop[i],color=250
      stop
 endfor 
+endif
+
+
+;Make plots of all the ANCILLARY microbursts 
+
+
+if fu eq '3' then nelem = n_elements(t_ancillary_fu3) else nelem = n_elements(t_ancillary_fu4)
+if fu eq '3' then ta = time_double(t_ancillary_fu3) else ta = time_double(t_ancillary_fu4)
+ylim,'fu'+fu+'_fb_mcilwainL_from_hiresfile',0,12
+ylim,'fu'+fu+'_fb_mlt_from_hiresfile',0,24
+ylim,'fu'+fu+'_fb_col_hires_fluxlog',0.001,100,1
+options,'fu'+fu+'_fb_col_hires_fluxlog','panel_size',2
+
+for i=0,nelem-1 do begin
+     tlimit,ta[i]-4,ta[i]+4
+     tplot,['fu'+fu+'_fb_col_hires_fluxlog',$
+     'fu'+fu+'_fb_col_hires_flux_0',$
+     'fu'+fu+'_fb_col_hires_flux_1',$
+     'fu'+fu+'_fb_col_hires_flux_2',$
+     'fu'+fu+'_fb_col_hires_flux_3',$
+     'fu'+fu+'_fb_col_hires_flux_4',$
+     'fu'+fu+'_fb_mcilwainL_from_hiresfile',$
+     'fu'+fu+'_fb_mlt_from_hiresfile'] 
+     timebar,ta 
+     timebar,t,color=250
+     stop
+endfor 
+
+
+
+
+
 
      ;timebar,1.,/databar,varname='fu3_fb_col_hires_flux_0'
 
