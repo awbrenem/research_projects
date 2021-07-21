@@ -12,7 +12,9 @@
 
 
 path = '/Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/'
-file = 'RBSPa_FU3_conjunction_values.txt'
+fb = '3' ;FIREBIRD 3 or 4
+rb = 'a' ;RBSP a or b
+file = 'RBSP'+rb+'_FU'+fb+'_conjunction_values.txt'
 
 
 ft= [7,7,7,4,4,4,4,4,4,4,4,4,4,4,4,7,4,4,4,4,4,4,7,7,7,7,7,7,7,7,4,4,4,4,7,7,7,7,7,7,7,7,4,4,4,4,4,4,4,4,7,7,7,7,7,7,7,7,7,7,7,7,7,7]
@@ -195,7 +197,88 @@ options,'SpecBAvg_lf','ytitle','Spec!CAvg pT^2/Hz!C10Hz<f<0.1fce'
 options,'SpecBAvg_lb','ytitle','Spec!CAvg pT^2/Hz!Clower band chorus'
 options,'SpecBAvg_ub','ytitle','Spec!CAvg pT^2/Hz!Cupper band chorus'
 
-;All conjunctions, event the 0000-00-00/00:00 ones
+;All conjunctions, except the 0000-00-00/00:00 ones
+
+
+
+
+
+;-----------------------------------------------------------
+;Now add in the output from Mike Shumko's microburst detection program. 
+;I'm adding this after the fact b/c this is the sort of program that probably will 
+;be rerun a bunch of times and I don't want to recreate the entire master list every time 
+;-----------------------------------------------------------
+
+
+
+microbursts = load_firebird_microburst_list(fb)
+tmb = time_double(microbursts.time)
+tconj = time_double(tmin2)
+
+mb_number = replicate(!values.f_nan,n_elements(tmin2))
+mb_chavg = replicate(!values.f_nan,n_elements(tmin2),6)
+mb_chmax = replicate(!values.f_nan,n_elements(tmin2),6)
+mb_chmin = replicate(!values.f_nan,n_elements(tmin2),6)
+mb_chmed = replicate(!values.f_nan,n_elements(tmin2),6)
+mb_totaltime = replicate(!values.f_nan,n_elements(tmin2),6)  ;Time separating first and last detected microburst. Used to find avg flux
+;mb_ratio = replicate(!values.f_nan,n_elements(tmin2)) ;ratio of amplitudes for ch1 and ch6 (poor man's spectral shape)
+
+
+;Extract the detected microbursts with +/- some time range about the closest approach for each conjunction
+for i=0,n_elements(tmin2)-1 do begin $
+       goomb = where((tmb gt tconj[i]-60*5.) and (tmb lt tconj[i]+60*5.)) & $
+       if goomb[0] ne -1 then begin 
+              mb_number[i] = n_elements(goomb)
+              mb_chmax[i,0] = max(microbursts.flux_ch1[goomb],/nan)
+              mb_chmin[i,0] = min(microbursts.flux_ch1[goomb],/nan)
+              mb_chavg[i,0] = mean(microbursts.flux_ch1[goomb],/nan)
+              mb_chmed[i,0] = median(microbursts.flux_ch1[goomb])
+
+              mb_chmax[i,1] = max(microbursts.flux_ch2[goomb],/nan)
+              mb_chmin[i,1] = min(microbursts.flux_ch2[goomb],/nan)
+              mb_chavg[i,1] = mean(microbursts.flux_ch2[goomb],/nan)
+              mb_chmed[i,1] = median(microbursts.flux_ch2[goomb])
+
+              mb_chmax[i,2] = max(microbursts.flux_ch3[goomb],/nan)
+              mb_chmin[i,2] = min(microbursts.flux_ch3[goomb],/nan)
+              mb_chavg[i,2] = mean(microbursts.flux_ch3[goomb],/nan)
+              mb_chmed[i,2] = median(microbursts.flux_ch3[goomb])
+
+              mb_chmax[i,3] = max(microbursts.flux_ch4[goomb],/nan)
+              mb_chmin[i,3] = min(microbursts.flux_ch4[goomb],/nan)
+              mb_chavg[i,3] = mean(microbursts.flux_ch4[goomb],/nan)
+              mb_chmed[i,3] = median(microbursts.flux_ch4[goomb])
+
+              mb_chmax[i,4] = max(microbursts.flux_ch5[goomb],/nan)
+              mb_chmin[i,4] = min(microbursts.flux_ch5[goomb],/nan)
+              mb_chavg[i,4] = mean(microbursts.flux_ch5[goomb],/nan)
+              mb_chmed[i,4] = median(microbursts.flux_ch5[goomb])
+
+              mb_chmax[i,5] = max(microbursts.flux_ch6[goomb],/nan)
+              mb_chmin[i,5] = min(microbursts.flux_ch6[goomb],/nan)
+              mb_chavg[i,5] = mean(microbursts.flux_ch6[goomb],/nan)
+              mb_chmed[i,5] = median(microbursts.flux_ch6[goomb])
+              if n_elements(goomb) gt 1 then mb_totaltime[i] = tmb[max(goomb)] - tmb[goomb[0]] else mb_totaltime[i] = 0.
+
+              print,'i=',i,' ',time_string(tmin2[i]),' # = ',strtrim(floor(mb_number[i]),2),' ',mb_chmax[i,0],' ',mb_chmin[i,0],' ',mb_chavg[i,0],' ',mb_chmed[i,0]
+
+       endif
+endfor
+
+
+store_data,'mb_number',tmin2,mb_number
+store_data,'mb_totaltime',tmin2,mb_totaltime
+store_data,'mb_chavg',tmin2,mb_chavg
+store_data,'mb_chmed',tmin2,mb_chmed
+store_data,'mb_chmax',tmin2,mb_chmax
+store_data,'mb_chmin',tmin2,mb_chmin
+
+options,'mb_number','ytitle','#uB during conjunction'
+options,'mb_totaltime','ytitle','delta-t b/t first and last!Cdetected uB for each conjunction'
+options,'mb_chavg','ytitle','average uB flux!Cduring each conjunction'
+options,'mb_chmed','ytitle','median uB flux!Cduring each conjunction'
+options,'mb_chmin','ytitle','min uB flux!Cduring each conjunction'
+options,'mb_chmax','ytitle','max uB flux!Cduring each conjunction'
 
 
 
