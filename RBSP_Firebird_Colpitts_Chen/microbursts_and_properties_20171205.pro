@@ -19,12 +19,15 @@
 ;-------------------------------------------
 
 ;tpeak = time of peak flux (generally channel 1)
-;fluxpeak = Peak flux per channel
+;fluxpeak = Peak flux per channel (5 FIREBIRD energy channels)
 ;bgleft = background level at start of microburst
 ;bgright = background level at end of microburst
 ;tstart = Start time of microburst for each channel
 ;tstop = Stop time of microburst for each channel
 
+;Notes:
+;Smoothing doesn't work well for background subtraction b/c clustered microbursts raise the background level 
+;to clearly artificial levels. Probably best to just use the by-eye determination. 
 
 
 
@@ -418,7 +421,6 @@ t_ancillary_fu4 = [$
 '2017-12-05/22:45:51.164',$
 '2017-12-05/22:45:51.414',$
 '2017-12-05/22:45:54.115',$
-'2017-12-05/22:45:59.315',$
 '2017-12-05/22:46:00.415',$
 '2017-12-05/22:46:01.215',$
 '2017-12-05/22:46:01.315',$
