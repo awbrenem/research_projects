@@ -1,24 +1,5 @@
-;Identify microbursts on 2017-12-05 for Frontiers paper and plot their spectra 
-
-
-;Notes:
-;Smoothing doesn't work well for background subtraction b/c clustered microbursts raise the background level 
-;to clearly artificial levels. Probably best to just use the by-eye determination. 
-
-;What about microbursts where the flux goes to zero afterwards? 
-;Does this mean that the instrument saturated and isn't showing the true counts? 
-
-
-;From Arlo Johnson 2020 FIREBIRD paper:
-;Context channels are just downsampled hires data, and so same calibrations apply. 
-
-;This event is part of Campaign 13 (2017/11/19–2017/12/14)
-;Cadence = 50msec 
-;FU3 D1 channel collimated detector used 300-408 keV - Geometric factor = 5.8 cm2-sr
-;FU4 D1 channel collimated detector used 283-384 keV - Geometric factor = 5.4 cm2-sr
-
-
-
+;Plot identified microbursts for the 2017-12-05 for Frontiers paper
+;Purpose is to check my id. Actual microbursts come from microbursts_and_properties_20171205.pro
 
 rbsp_efw_init
 
@@ -84,40 +65,40 @@ options,['fu?_fb_mcilwainL_from_hiresfile','fu?_fb_mlt_from_hiresfile'],'panel_s
 
 
 
-tplot,['fu3_fb_col_hires_flux_smoothed','fu3_fb_col_hires_flux','fu3_fb_col_hires_fluxlog','fu3_fb_col_hires_flux_smoothedlog','fu3_fb_mlt_from_hiresfile','fu3_fb_mcilwainL_from_hiresfile']
+;tplot,['fu3_fb_col_hires_flux_smoothed','fu3_fb_col_hires_flux','fu3_fb_col_hires_fluxlog','fu3_fb_col_hires_flux_smoothedlog','fu3_fb_mlt_from_hiresfile','fu3_fb_mcilwainL_from_hiresfile']
+
+;tplot,['fu3_fb_col_hires_flux_smoothed_0/fu3_fb_col_hires_flux_smoothed_1',$
+;'fu3_fb_col_hires_flux_smoothed_0',$
+;'fu3_fb_col_hires_flux_smoothed_1',$
+;'fu3_fb_col_hires_flux_smoothed_2',$
+;'fu3_fb_col_hires_flux_smoothed_3',$
+;'fu3_fb_col_hires_flux_smoothed_4',$
+;'fu3_fb_col_hires_flux_smoothed_5']
+
+;tplot,['fu3_fb_col_hires_flux_0/fu3_fb_col_hires_flux_1',$
+;'fu3_fb_col_hires_flux_0',$
+;'fu3_fb_col_hires_flux_1',$
+;'fu3_fb_col_hires_flux_2',$
+;'fu3_fb_col_hires_flux_3',$
+;'fu3_fb_col_hires_flux_4',$
+;'fu3_fb_col_hires_flux_5',$
+;'fu3_fb_mcilwainL_from_hiresfile',$
+;'fu3_fb_mlt_from_hiresfile']
+
+;tplot,['fu4_fb_col_hires_flux_0/fu4_fb_col_hires_flux_1',$
+;'fu4_fb_col_hires_flux_0',$
+;'fu4_fb_col_hires_flux_1',$
+;'fu4_fb_col_hires_flux_2',$
+;'fu4_fb_col_hires_flux_3',$
+;'fu4_fb_col_hires_flux_4',$
+;'fu4_fb_col_hires_flux_5',$
+;'fu4_fb_mcilwainL_from_hiresfile',$
+;'fu4_fb_mlt_from_hiresfile']
 
 
-tplot,['fu3_fb_col_hires_flux_smoothed_0/fu3_fb_col_hires_flux_smoothed_1',$
-'fu3_fb_col_hires_flux_smoothed_0',$
-'fu3_fb_col_hires_flux_smoothed_1',$
-'fu3_fb_col_hires_flux_smoothed_2',$
-'fu3_fb_col_hires_flux_smoothed_3',$
-'fu3_fb_col_hires_flux_smoothed_4',$
-'fu3_fb_col_hires_flux_smoothed_5']
-
-
-tplot,['fu3_fb_col_hires_flux_0/fu3_fb_col_hires_flux_1',$
-'fu3_fb_col_hires_flux_0',$
-'fu3_fb_col_hires_flux_1',$
-'fu3_fb_col_hires_flux_2',$
-'fu3_fb_col_hires_flux_3',$
-'fu3_fb_col_hires_flux_4',$
-'fu3_fb_col_hires_flux_5',$
-'fu3_fb_mcilwainL_from_hiresfile',$
-'fu3_fb_mlt_from_hiresfile']
-
-tplot,['fu4_fb_col_hires_flux_0/fu4_fb_col_hires_flux_1',$
-'fu4_fb_col_hires_flux_0',$
-'fu4_fb_col_hires_flux_1',$
-'fu4_fb_col_hires_flux_2',$
-'fu4_fb_col_hires_flux_3',$
-'fu4_fb_col_hires_flux_4',$
-'fu4_fb_col_hires_flux_5',$
-'fu4_fb_mcilwainL_from_hiresfile',$
-'fu4_fb_mlt_from_hiresfile']
-
-
+;-----------------------------------------------
 ;Shumko's microburst list 
+;--using this only as comparison to my my-eye list
 ub = load_firebird_microburst_list('3')                                              
 
 ;Mike's data aren't time-corrected
@@ -132,18 +113,31 @@ for i=0,n_elements(goob)-1 do begin $
      ub.time[goob[i]] = time_string(ttmp,prec=3)
 endfor
 
+;for i=0,1000 do print,ub.time[goob[i]],ub.flux_ch1[goob[i]],ub.flux_ch2[goob[i]],ub.flux_ch3[goob[i]],ub.flux_ch4[goob[i]],ub.flux_ch5[goob[i]]
+;-----------------------------------------------
 
 
 
 
-
+;-----------------------------------------------------------------
 ;Aaron's by-eye microburst list 
 uba = microbursts_and_properties_20171205()
 
+t_ancillary_fu3 = uba.t_ancillary_fu3
+t_ancillary_fu4 = uba.t_ancillary_fu4
+tpeak_fu3 = uba.tpeak_fu3
+tpeak_fu4 = uba.tpeak_fu4
+fluxpeak_fu3 = uba.fluxpeak_fu3
+fluxpeak_fu4 = uba.fluxpeak_fu4
+bgleft_fu3 = uba.bgleft_fu3
+bgleft_fu4 = uba.bgleft_fu4
+bgright_fu3 = uba.bgright_fu3
+bgright_fu4 = uba.bgright_fu4
+tstart_fu3 = uba.tstart_fu3
+tstart_fu4 = uba.tstart_fu4
+tstop_fu3 = uba.tstop_fu3
+tstop_fu4 = uba.tstop_fu4
 
-
-
-;for i=0,1000 do print,ub.time[goob[i]],ub.flux_ch1[goob[i]],ub.flux_ch2[goob[i]],ub.flux_ch3[goob[i]],ub.flux_ch4[goob[i]],ub.flux_ch5[goob[i]]
 
 
 
@@ -153,76 +147,43 @@ Lvals_fu3a = fltarr(n_elements(t_ancillary_fu3))
 MLTvals_fu3a = fltarr(n_elements(t_ancillary_fu3))
 for i=0,n_elements(t_ancillary_fu3)-1 do Lvals_fu3a[i] = tsample('fu3_fb_mcilwainL_from_hiresfile',time_double(t_ancillary_fu3[i]))
 for i=0,n_elements(t_ancillary_fu3)-1 do MLTvals_fu3a[i] = tsample('fu3_fb_mlt_from_hiresfile',time_double(t_ancillary_fu3[i]))
-
-;Print all FU4 microbursts
+;Print all FU3 ancillary microbursts
 for i=0,n_elements(t_ancillary_fu3)-1 do print,t_ancillary_fu3[i],lvals_fu3a[i],mltvals_fu3a[i]
-
-
 
 
 Lvals_fu4a = fltarr(n_elements(t_ancillary_fu4))
 MLTvals_fu4a = fltarr(n_elements(t_ancillary_fu4))
 for i=0,n_elements(t_ancillary_fu4)-1 do Lvals_fu4a[i] = tsample('fu4_fb_mcilwainL_from_hiresfile',time_double(t_ancillary_fu4[i]))
 for i=0,n_elements(t_ancillary_fu4)-1 do MLTvals_fu4a[i] = tsample('fu4_fb_mlt_from_hiresfile',time_double(t_ancillary_fu4[i]))
-
-;Print all FU4 microbursts
+;Print all FU4 ancillary microbursts
 for i=0,n_elements(t_ancillary_fu4)-1 do print,t_ancillary_fu4[i],lvals_fu4a[i],mltvals_fu4a[i]
-
-
-
-
-
-
-
-
-
-;-------------------------------------------
-;FU4 potential microbursts 
-;-------------------------------------------
-
-
-
-
-
-
-
 
 
 Lvals_fu3 = fltarr(n_elements(tpeak_fu3))
 MLTvals_fu3 = fltarr(n_elements(tpeak_fu3))
 for i=0,n_elements(tpeak_fu3)-1 do Lvals_fu3[i] = tsample('fu3_fb_mcilwainL_from_hiresfile',time_double(tpeak_fu3[i]))
 for i=0,n_elements(tpeak_fu3)-1 do MLTvals_fu3[i] = tsample('fu3_fb_mlt_from_hiresfile',time_double(tpeak_fu3[i]))
-
 ;Print all FU3 microbursts
 for i=0,n_elements(tpeak_fu3)-1 do print,tpeak_fu3[i],lvals_fu3[i],mltvals_fu3[i]
-
-
-
-
-
 
 Lvals_fu4 = fltarr(n_elements(tpeak_fu4))
 MLTvals_fu4 = fltarr(n_elements(tpeak_fu4))
 for i=0,n_elements(tpeak_fu4)-1 do Lvals_fu4[i] = tsample('fu4_fb_mcilwainL_from_hiresfile',time_double(tpeak_fu4[i]))
 for i=0,n_elements(tpeak_fu4)-1 do MLTvals_fu4[i] = tsample('fu4_fb_mlt_from_hiresfile',time_double(tpeak_fu4[i]))
-
-
 ;Print all FU4 microbursts
 for i=0,n_elements(tpeak_fu4)-1 do print,tpeak_fu4[i],lvals_fu4[i],mltvals_fu4[i]
 
 
 
 
-
-
-
-
+;------------------------------------------------------------
 ;Make plots of all the microbursts 
 
-fu = '4'
+fu = '3'
 
 if fu eq '3' then nelem = n_elements(tpeak_fu3) else nelem = n_elements(tpeak_fu4)
 if fu eq '3' then t = time_double(tpeak_fu3) else t = time_double(tpeak_fu4)
+if fu eq '3' then ta = time_double(t_ancillary_fu3) else ta = time_double(t_ancillary_fu4)
 ylim,'fu'+fu+'_fb_mcilwainL_from_hiresfile',0,12
 ylim,'fu'+fu+'_fb_mlt_from_hiresfile',0,24
 ylim,'fu'+fu+'_fb_col_hires_fluxlog',0.001,100,1
@@ -230,7 +191,7 @@ options,'fu'+fu+'_fb_col_hires_fluxlog','panel_size',2
 if fu eq '3' then tstart = tstart_fu3 else tstart = tstart_fu4
 if fu eq '3' then tstop = tstop_fu3 else tstop = tstop_fu4
 
-skip = 1 
+skip = 0 
 if not skip then begin 
 for i=0,nelem-1 do begin
      tlimit,t[i]-4,t[i]+4
@@ -243,19 +204,17 @@ for i=0,nelem-1 do begin
      'fu'+fu+'_fb_mcilwainL_from_hiresfile',$
      'fu'+fu+'_fb_mlt_from_hiresfile'] 
      timebar,t 
-     timebar,tstart,color=250 
-     timebar,tstop,color=250
-;     timebar,t[i] 
-;     timebar,tstart[i],color=250 
-;     timebar,tstop[i],color=250
+     timebar,ta,color=250
+     timebar,tstart,color=50 
+     timebar,tstop,color=50
      stop
 endfor 
 endif
 
 
+
+;------------------------------------------------------------------------------
 ;Make plots of all the ANCILLARY microbursts 
-
-
 if fu eq '3' then nelem = n_elements(t_ancillary_fu3) else nelem = n_elements(t_ancillary_fu4)
 if fu eq '3' then ta = time_double(t_ancillary_fu3) else ta = time_double(t_ancillary_fu4)
 ylim,'fu'+fu+'_fb_mcilwainL_from_hiresfile',0,12
@@ -263,6 +222,8 @@ ylim,'fu'+fu+'_fb_mlt_from_hiresfile',0,24
 ylim,'fu'+fu+'_fb_col_hires_fluxlog',0.001,100,1
 options,'fu'+fu+'_fb_col_hires_fluxlog','panel_size',2
 
+skip = 1 
+if not skip then begin 
 for i=0,nelem-1 do begin
      tlimit,ta[i]-4,ta[i]+4
      tplot,['fu'+fu+'_fb_col_hires_fluxlog',$
@@ -273,11 +234,11 @@ for i=0,nelem-1 do begin
      'fu'+fu+'_fb_col_hires_flux_4',$
      'fu'+fu+'_fb_mcilwainL_from_hiresfile',$
      'fu'+fu+'_fb_mlt_from_hiresfile'] 
-     timebar,ta 
-     timebar,t,color=250
+     timebar,ta,color=250
+     timebar,t
      stop
 endfor 
-
+endif
 
 
 
