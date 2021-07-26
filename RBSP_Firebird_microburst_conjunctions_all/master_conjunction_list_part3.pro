@@ -3,7 +3,8 @@
 ;is nearby, and FBK amplitudes (both FBK7 and FBK13) near conjunction, etc.
 
 ;For each FB/RBSP combination, outputs a text file to
-;~/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/all_conjunctions/all_conjunctions_with_hires_data/RBSP'+probe+'_'+fb+'_burst_minutes/'
+;~/Desktop/Research/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/RBSP?_FU?_conjunction_values.txt'
+;or RBSP?_FU?_conjunction_values_hr.txt' for conjunctions that include FIREBIRD HiRes data
 
 ;Also saves a plot of the conjunction.
 ;--Change "zeroline" for dL, dMLT to the actual value at the minimum separation.
@@ -11,6 +12,51 @@
 
 ;Even though the hires times have L and MLT values, I'm using the survey values. They match up essentially 
 ;identically and there's consistency b/t the hires and non hires versions. 
+
+;Header information for files produced is at RBSP_FU_conjunction_header.fmt
+
+
+
+
+;********************
+;DAYS WITH ANY AMOUNT OF CHORUS (RBb,FU4)
+;2016-01-14 (minor)
+;2016-01-20 (strong)
+;2016-01-21 (strong)
+;2016-08-14 (minor)
+;2016-08-25 (minor)
+;2016-08-29 (extremely minor - mostly UB)
+;2017-07-01 (minor)
+;2017-07-02 (extremely minor)
+;2017-07-09 (maybe??? extremely minor)
+;2017-07-12 (minor)
+;2017-07-16 (minor)
+;2017-07-21 (minor)
+
+
+;**************
+;j=32
+
+
+
+
+;*********PROBLEM:
+;J=253
+;% RBSP_LOAD_EMFISIS: Loading default 4sec L3 data...
+;SPD_DOWNLOAD_FILE(226): Downloading: https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
+;SPD_DOWNLOAD_FILE(280):   0 bytes complete   (0.0 KB/s)
+;% Compiled module: SPD_NETURL_ERROR2MSG.
+;SPD_DOWNLOAD_FILE(313): Unable to download file:  https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
+;SPD_DOWNLOAD_FILE(313): HTTPS Error: Failed to connect to host or proxy.
+;SPD_DOWNLOAD(238): No matching remote files found. Searching for local files.
+;CDF_LOAD_VARS(164): File not found: "/Users/aaronbreneman/data/rbsp/emfisis/Flight/RBSP-B/L3/2015/05/23/rbsp-b_magnetometer_4sec-gsm_emfisis-L3_20150523_*.cdf"
+;CDF_INFO_TO_TPLOT(30): Must provide a CDF structure
+;RBSP_LOAD_EMFISIS(306): No EMFISIS MAG SEN data loaded... Probe: b
+;STORE_DATA(271): Creating tplot variable: 37 fb_conjunction_times
+;TINTERPOL_MXN(334): uz_tvar must be set for tinterpol_mxn to work
+;% Illegal variable attribute: Y.
+;% Execution halted at: $MAIN$            273 /Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/master_conjunction_list_p
+;  art3.pro
 
 
 ;Grab local path to save data
@@ -21,14 +67,16 @@ pathoutput = homedir + 'Desktop/'
 
 
 testing = 0
+hires = 0   ;conjunctions w/ hires only?
+noplot = 1
 
-
-probe = 'a'
-fb = 'FU3'
+probe = 'b'
+fb = 'FU4'
 pmtime = 60.  ;plus/minus time (min) from closest conjunction for data consideration
+dettime = 0.75 ;(sec)  Time for detrending the hires data in order to obtain microburst amplitudes. 
+				;See firebird_subtract_tumble_from_hiresdata_testing.pro
 
-
-suffix = '_conjunctions.sav'
+if hires then suffix = '_conjunctions_hr.sav' else suffix = '_conjunctions.sav'
 
 ;--------------
 ;Conjunction data for all the FIREBIRD passes with HiRes data
@@ -38,15 +86,14 @@ path = homedir + 'Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Fireb
 
 
 fn = fb+'_'+'RBSP'+strupcase(probe)+suffix
-restore,path+fn
+restore,path+'RBSP_FB_final_conjunction_lists/'+fn
 tfb0 = t0
 tfb1 = t1
 
-
+;Print list of times (since these are based on FB ephemeris data, they don't need a time correction)
 for bb=0,n_elements(tfb0)-1 do print,bb,' ',time_string(tfb0[bb])
-
 ;for bb=1900,2200 do print,bb,' ',time_string(tfb0[bb]),'  ',time_string(tfb1[bb])
-;1936
+
 
 daytst = '0000-00-00'   ;used as a test to see if we need to load another day's data
 
@@ -69,6 +116,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 	tend   = time_string(tfb0[j] + (pmtime+10.)*60.)
 	ndays_load = (time_double(strmid(tend,0,10)) - time_double(strmid(tstart,0,10)))/86400 + 1
 
+	cal = firebird_get_calibration_counts2flux(strmid(tstart,0,10),strmid(fb,2,1))
 
 
 	currday = strmid(time_string(tfb0[j]),0,10)
@@ -104,37 +152,48 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 		;load context data
-		firebird_load_context_data_cdf_file,fb
+		firebird_load_context_data_cdf_file,strmid(fb,2,1)
 
 
-;		if not hires and ndays_load eq 2 then begin
+
 		if ndays_load eq 2 then begin
-			copy_data,'D0','D01'
-			copy_data,'D1','D11'
+			copy_data,'flux_context_'+fb,'flux_context_'+fb + '1'
+;			copy_data,'D1','D11'
 			copy_data,'MLT','MLT1'
 			copy_data,'McIlwainL','McIlwainL1'
 
 			timespan,trange[1]
-			firebird_load_context_data_cdf_file,fb
+			firebird_load_context_data_cdf_file,strmid(fb,2,1)
 
 			;Combine both days
-			get_data,'D0',vx,d & get_data,'D01',v1x,d1
-			store_data,'D0',[v1x,vx],[d1,d]
-			get_data,'D1',vx,d & get_data,'D11',v1x,d1
-			store_data,'D1',[v1x,vx],[d1,d]
+			get_data,'flux_context_'+fb,vx,d & get_data,'flux_context_'+fb + '1',v1x,d1
+			store_data,'flux_context_'+fb,[v1x,vx],[d1,d]
+			;get_data,'D1',vx,d & get_data,'D11',v1x,d1
+			;store_data,'D1',[v1x,vx],[d1,d]
 			get_data,'MLT',vx,d & get_data,'MLT1',v1x,d1
 			store_data,'MLT',[v1x,vx],[d1,d]
 			get_data,'McIlwainL',vx,d & get_data,'McIlwainL1',v1x,d1
 			store_data,'McIlwainL',[v1x,vx],[d1,d]
-			store_data,['D01','D11','MLT1','McIlwainL1'],/del
+			store_data,['flux_context_'+fb + '1','MLT1','McIlwainL1'],/del
 		endif
 
 		;Lots of missing FIREBIRD data, so we'll test to see if it's been loaded.
 		;If not, then skip to next data
 
 
+;		;Create a background-subtracted hires flux variable 
+;		rbsp_detrend,strlowcase(fb)+'_fb_col_hires_flux',5.
+;		copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_5sec'
+;		rbsp_detrend,strlowcase(fb)+'_fb_col_hires_flux',1.
+;		copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_1sec'
+;		rbsp_detrend,strlowcase(fb)+'_fb_col_hires_flux',0.1
+;		copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_01sec'
+;		rbsp_detrend,strlowcase(fb)+'_fb_col_hires_flux',0.5
+;		copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_05sec'
+;	tplot,['fu4_fb_col_hires_flux','fu4_fb_col_hires_flux_detrend_5sec','fu4_fb_col_hires_flux_detrend_1sec','fu4_fb_col_hires_flux_detrend_05sec','fu4_fb_col_hires_flux_detrend_01sec']
 
-		xtst1 = tsample('D0',[time_double(trange[0]),time_double(trange[1])])
+
+		xtst1 = tsample('flux_context_'+fb,[time_double(trange[0]),time_double(trange[1])])
 
 		missingdata = 0
 		if n_elements(xtst1) eq 1 and finite(xtst1[0]) eq 0 then missingdata = 1
@@ -142,7 +201,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 		if missingdata ne 1 then begin
-
 
 			;These load multi days automatically
 			timespan,trange[0],ndays_load
@@ -223,8 +281,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 		options,'fb_conjunction_times','ytitle','FB!Cconj'
 
 
-
-
 		get_data,'rbsp'+probe+'_emfisis_l3_4sec_gsm_Magnitude',ttt,magnit
 		fce = 28.*magnit
 
@@ -284,13 +340,12 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		store_data,'lcomb',data=['rbsp'+probe+'_state_lshell','McIlwainL']
 		store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt','MLT']
-		options,'MLT','psym',-2
-		options,'McIlwainL','psym',-2
+		options,['MLT','McIlwainL',strlowcase(rb)+'_state_lshell_interp','MLT',strlowcase(rb)+'_state_mlt_interp'],'psym',-2
 
 		options,'lcomb','colors',[0,250]
 		options,'mltcomb','colors',[0,250]
-		options,'rbsp'+probe+'_state_lshell','thick',2
-		options,'rbsp'+probe+'_state_mlt','thick',2
+;		options,'rbsp'+probe+'_state_lshell','thick',2
+;		options,'rbsp'+probe+'_state_mlt','thick',2
 		ylim,'lcomb',0,10
 		ylim,'mltcomb',0,24
 
@@ -570,7 +625,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		calculate_angle_difference,'rbsp'+probe+'_state_mlt_interp','MLT',newname='mltdiff'
 
 
-		options,['McIlwainL','MLT','rbsp'+probe+'_state_mlt','rbsp'+probe+'_state_lshell','ldiff','mltdiff'],'psym',-2
+		options,['ldiff','mltdiff'],'psym',-2
 		ylim,'ldiff',-20,20
 	;	tplot,['lcomb','ldiff','mltcomb','mltdiff']
 
@@ -732,18 +787,11 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;Find max FB flux - Use detrended version to get rid of the sc roll
 
 ;		if hires then begin
-;			time_clip,strlowcase(fb)+'_fb_sur_hires_flux',t0z,t1z,newname='fb_sur_flux_tc'
-;			rbsp_detrend,'fb_sur_flux_tc',0.1
-;			get_data,'fb_sur_flux_tc_detrend',tt,dat
-;			max_HRflux_sur = max(dat,/nan)
 ;			time_clip,strlowcase(fb)+'_fb_col_hires_flux',t0z,t1z,newname='fb_col_flux_tc'
 ;			rbsp_detrend,'fb_col_flux_tc',0.1
 ;			get_data,'fb_col_flux_tc_detrend',tt,dat
 ;			max_HRflux_col = max(dat,/nan)
 ;		endif else begin
-;			time_clip,'D1',t0z,t1z,newname='fb_sur_flux_tc'
-;			get_data,'fb_sur_flux_tc',tt,dat
-;			max_HRflux_sur = max(dat,/nan)
 ;			time_clip,'D0',t0z,t1z,newname='fb_col_flux_tc'
 ;			get_data,'fb_col_flux_tc',tt,dat
 ;			max_HRflux_col = max(dat,/nan)
@@ -751,46 +799,130 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 		;hires only 
-		max_HRflux_sur = !values.f_nan
 		max_HRflux_col = !values.f_nan
 		;survey only 
-		max_counts_sur = !values.f_nan
-		max_counts_col = !values.f_nan
+		max_flux_col = !values.f_nan
 
 		;Limit to times of conjunction only (t0[j] to t1[j]) and not to the +/-60 min
 		;times which I use for RBSP
 		if hires then begin
-			time_clip,strlowcase(fb)+'_fb_sur_hires_flux',t0[j],t1[j],newname='fb_sur_flux_tc'
-			rbsp_detrend,'fb_sur_flux_tc',0.1
-			get_data,'fb_sur_flux_tc_detrend',tt,dat
-			max_HRflux_sur = max(dat,/nan)
+		   ;Determine the hires flux ABOVE background level by subtracting off a boxcar average. 
+		   ;NOTE: it is critical to remove data surrounding data gaps as these can throw off the fit line
+		   ;significantly.   
+		   ;FOR TESTING RESULTS SEE "firebird_subtract_tumble_from_hiresdata_testing.pro"
+
 			time_clip,strlowcase(fb)+'_fb_col_hires_flux',t0[j],t1[j],newname='fb_col_flux_tc'
-			rbsp_detrend,'fb_col_flux_tc',0.1
-			get_data,'fb_col_flux_tc_detrend',tt,dat
-			max_HRflux_col = max(dat,/nan)
-		endif
-		time_clip,'D1',t0[j],t1[j],newname='fb_sur_flux_tc'
-		get_data,'fb_sur_flux_tc',tt,dat
-		max_counts_sur = max(dat,/nan)
-		time_clip,'D0',t0[j],t1[j],newname='fb_col_flux_tc'
-		get_data,'fb_col_flux_tc',tt,dat
-		max_counts_col = max(dat,/nan)
+			rbsp_detrend,'fb_col_flux_tc',dettime
+			rbsp_detrend,strlowcase(fb)+'_fb_col_hires_flux',dettime ;for later comparison plotting only
+			get_data,'fb_col_flux_tc_detrend',data=d_det
+			tder = deriv(d_det.x)
+			store_data,'datagap_test',d_det.x,tder
+			options,'datagap_test','ytitle','time!Cderiv!C(data gaps)'
+			ylim,'datagap_test',0.01,20,1
 
 
+			;set gap limit based on hires data cadence
+			gaplim = 2*cal.cadence/1000.    ;sec
+			goo = where(tder gt gaplim)
+			data = d_det.y 
 
-;;********************
-;;COMPARE HIRES TO SURVEY FIREBIRD FLUXES 
-;rbsp_detrend,strlowcase(fb)+'_fb_sur_hires_flux',0.1
-;;rbsp_detrend,'D1',0.1
-;
-;tplot,[strlowcase(fb)+'_fb_sur_hires_flux_detrend',strlowcase(fb)+'_fb_sur_hires_flux','D1']
-;
-;;*******************
+			datcadence = sample_rate(d_det.x,/average)
+			npts_pad = ceil(datcadence * dettime/2.)  ;number of hires data points to remove about each data point that is a gap
+
+			;remove data near dropouts
+			for i=0,n_elements(goo)-1 do begin
+				;Make sure the gap doesn't extend beyond the last data point
+				if goo[i]+npts_pad ge n_elements(d_det.x)-1 then maxindex = n_elements(d_det.x)-1 else maxindex = goo[i]+npts_pad
+				boo = where((d_det.x ge d_det.x[goo[i]-npts_pad]) and (d_det.x le d_det.x[maxindex]))
+				if boo[0] ne -1 then data[boo,*] = !values.f_nan
+			endfor
+
+
+			;When determining max value, ONLY use positive values. Large negative values usually due to data dropouts
+			max_HRflux_col = max(data,/nan)
+
+sc = strmid(fb,2,1)
+store_data,'fb_col_flux_tc_detrend_gapsremoved',d_det.x,data
+store_data,'detcomb',data=['fu'+sc+'_fb_col_hires_flux_0_detrend','fb_corr'] & options,'detcomb','colors',[0,250]
+options,'detcomb','ytitle','full detrended data vs!Cgap-reduced version'
+store_data,'comb',data=['fb_col_flux_tc','fb_col_flux_tc_smoothed']
+options,'comb','colors',[0,250]
+options,'comb','ytitle','Hires flux!Cvs smoothed'
+
+get_data,'ldiff',dd.x,dd.y
+store_data,'poneline',dd.x,replicate(1.,n_elements(dd.x))
+store_data,'moneline',dd.x,replicate(-1.,n_elements(dd.x))
+store_data,'l_mlt_diffcomb',data=['ldiff','mltdiff','poneline','moneline']
+options,'ldiff','colors',250
+ylim,'l_mlt_diffcomb',-2,2
+ylim,'fu4_fb_mlt_from_hiresfile',0,24
+ylim,'rbsp'+probe+'_efw_spec64_scmw_comb',30,10000,1
+options,'fce_eq_2','linestyle',2
+options,'fce_eq_2','thick',2 & options,'fce_eq','thick',2 & options,'fce_eq_10','thick',2  
+options,'fce_eq_2','color',1 & options,'fce_eq','color',1 & options,'fce_eq_10','color',1  
+options,strlowcase(rb)+'_state_lshell_interp','ytitle',rb+'!CL'
+options,strlowcase(rb)+'_state_mlt_interp','ytitle',rb+'!CMLT'
+options,'MLT','ytitle',fb+'!CMLT'
+options,'McIlwainL','ytitle',fb+'!CL'
+
+;store_data,'mltcomb',data=['MLT',strlowcase(rb)+'_state_mlt_interp']
+;store_data,'lcomb',data=['MLT',strlowcase(rb)+'_state_mlt_interp']
+options,'mltcomb','ytitle',fb+' MLT!C'+rb+'!CMLT'
+options,'lcomb','ytitle',fb+' L!C'+rb+'!CL'
+
+	tplot_options,'xmargin',[20.,15.]
+	tplot_options,'ymargin',[3,6]
+	tplot_options,'xticklen',0.08
+	tplot_options,'yticklen',0.02
+	tplot_options,'xthick',2
+	tplot_options,'ythick',2
+	tplot_options,'labflag',-1	
+	
+copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_v2'
+ylim,strlowcase(fb)+'_fb_col_hires_flux_detrend_v2',-10,10
+options,strlowcase(fb)+'_fb_col_hires_flux_detrend_v2','ytitle','FB col!Cdetrendflux!Cexpanded!Cyscale'
+options,strlowcase(fb)+'_fb_col_hires_flux_detrend','ytitle','FB col!Cdetrendflux'
+options,'fb_col_flux_tc_detrend_gapsremoved','ytitle','FB col!Cdetrendflux!Cgaps!Cremoved'
+options,'l_mlt_diffcomb','ytitle','dL(red)!CdMLT!C(RB-FB)'
+
+;Look at overview plot for the ENTIRE time hires data is available. Compare this to the time when 
+;the conjunction is within dL and dMLT <= +/- 1
+
+timeS = strmid(tstart,0,4)+strmid(tstart,5,2)+strmid(tstart,8,2)+'_'+strmid(tstart,11,2)+strmid(tstart,14,2)+strmid(tstart,17,2)
+
+if not noplot then begin 
+	popen,'~/Desktop/'+'RBSP'+probe+'_'+fb + '_'+timeS+'_conjunction_hr.ps'
+	timespan,t0[j]-60.,t1[j]-t0[j] + 120.,/sec
+	tplot,['rbsp'+probe+'_efw_spec64_scmw_comb',$
+		strlowcase(fb)+'_fb_col_hires_flux',$
+		'comb',$
+		'datagap_test',$
+		strlowcase(fb)+'_fb_col_hires_flux_detrend_v2',$
+		strlowcase(fb)+'_fb_col_hires_flux_detrend',$
+		'fb_col_flux_tc_detrend_gapsremoved',$
+		'mltcomb','lcomb','l_mlt_diffcomb']
+	timebar,[t0[j],t1[j]]
+
+	;stop
+
+	timespan,t0z,t1z-t0z,/sec
+	tplot,['rbsp'+probe+'_efw_spec64_scmw_comb',strlowcase(fb)+'_fb_col_hires_flux',$
+	'mltcomb','lcomb','l_mlt_diffcomb']
+	timebar,[t0[j],t1[j]]
+	pclose
+endif
+
 ;stop
 
-		if max_counts_sur eq 0 then max_counts_sur = !values.f_nan
-		if max_counts_col eq 0 then max_counts_col = !values.f_nan
-		if max_HRflux_sur eq 0 then max_HRflux_sur = !values.f_nan
+
+
+		endif
+		time_clip,'flux_context_'+fb,t0[j],t1[j],newname='fb_col_flux_tc'
+
+		get_data,'fb_col_flux_tc',tt,dat
+		max_flux_col = max(dat,/nan)
+
+		if max_flux_col eq 0 then max_flux_col = !values.f_nan
 		if max_HRflux_col eq 0 then max_HRflux_col = !values.f_nan
 
 
@@ -909,72 +1041,10 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 	;If first time opening file, then print the header
+	;For detailed header info see RBSP_FU_conjunction_header.fmt
 		if not result then begin
 			openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun
-	;					OLD HEADER STYLE (TAKES UP TOO MUCH SPACE)
-	;					printf,lun,'date			Lshell			MLT 		min_sep		dLmin			dMLTmin 		max_counts_col		max_counts_sur	nsec_EMF_burst		nsec_B1_burst 		nsec_B2_burst		fbk7_Ewmax_4		fbk7_Ewmax_5		fbk7_Ewmax_6	fbk7_Bwmax_4	fbk7_Bwmax_5	fbk7_Bwmax_6	fbk13_Ewmax_7	fbk13_Ewmax_8	fbk13_Ewmax_9	fbk13_Ewmax_10	fbk13_Ewmax_11	fbk13_Ewmax_12	fbk13_Bwmax_7	fbk13_Bwmax_8	fbk13_Bwmax_9	fbk13_Bwmax_10	fbk13_Bwmax_11	fbk13_Bwmax_12'
-	;					NEW HEADER STYLE
-	;					printf,lun,'date					  L		 MLT     mnsep	  dL	   dMLT   col	sur	  EMFb   B1b   B2b  7E4	 7E5  7E6  7B4  7B5	7B6  13E7 13E8 13E9 13E10 13E11	13E12 13B7 13B8	13B9 13B10 13B11 13B12'
 						printf,lun,'Conjunction data for RBSP'+probe+' and '+fb + ' from Shumko file ' + fb+'_'+rb+'_conjunctions_dL10_dMLT10_hr_final.txt'
-						printf,lun,'Tstart = start of conjunction'
-						printf,lun,'Tend = end of conjunction'
-						printf,lun,'Tmin = time of closest conjunction (defined from minimum absolute separation)'
-						printf,lun,'Lrb = L value ('+ 'rbsp'+probe+ ') during min separation time'
-						printf,lun,'Lfb = L value ('+ fb+ ') during min separation time'
-						printf,lun,'MLTrb = MLT value ('+ 'rbsp'+probe+ ') during min separation time'
-						printf,lun,'MLTfb = MLT value ('+ fb+ ') during min separation time'
-						printf,lun,'distmin = minimum |separation| in RE b/t rbsp'+probe + ' and ' +fb + ' at Tminsep'
-						printf,lun,'dLmin = |delta L| of rbsp'+probe+ ') during min separation time'
-						printf,lun,'dMLTmin = |delta MLT| of rbsp'+probe+ ') during min separation time'
-						printf,lun,'colS = max collimated detector FB survey counts during conjunction'
-						printf,lun,'surS = max surface detector FB survey counts during conjunction'
-						printf,lun,'colHR = max collimated detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
-						printf,lun,'surHR = max surface detector FB hires flux during conjunction (detrended over 0.1 sec to get rid of roll variation)'
-						printf,lun,'FBb = Number seconds hires FIREBIRD data available during conjunction (Tstart and Tend)'
-						printf,lun,'EMFb = number of sec of EMFISIS burst data within +/-60 min of middle conjunction time'
-						printf,lun,'B1b = number of sec of EFW burst 1 data within +/-60 min of middle conjunction time'
-						printf,lun,'B2b = number of sec of EFW burst 2 data within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-
-						printf,lun,'Total spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Max   spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-						printf,lun,'Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time'
-
-
-						printf,lun,'The remaining columns are max EFW filter bank amplitudes (pT, mV/m) within +/-60 min of middle conjunction time'
-						printf,lun,'NOTE1: many entries have missing FIREBIRD data, including ephemeris. This is correct, and is more prevelant early in the mission...'
-						printf,lun,'...During these time the RBSP L and MLT values are taken as the AVERAGE value during the conjunction, not the values at the closest approach, which is undefined'
-						printf,lun,'NOTE2: the majority of conjunctions have no FIREBIRD hires data. See the FBb column.'
-						printf,lun,' '
-
-						;printf,lun,'Tstart              Tend                Tmin				   Lrb      Lfb     MLTrb    MLTfb   distmin    dLmin	 dMLTmin  col	      sur         EMFb    B1b   B2b  SpecETot_lf     SpecEMax_lf    SpecEAvg_lf    SpecEMed_lf    SpecETot_lb    SpecEMax_lb       SpecEAvg_lb    SpecEMed_lb    SpecETot_ub    SpecEMax_ub    SpecEAvg_ub    SpecEMed_ub    SpecBTot_lf    SpecBMax_lf   SpecBAvg_lf    SpecBMed_lf    SpecBTot_lb    SpecBMax_lb     SpecBAvg_lb    SpecBMed_lb    SpecBTot_ub    SpecBMax_ub    SpecBAvg_ub   SpecBMed_ub  7E4   7E5  7E6   7B4    7B5  7B6   13E7  13E8  13E9 13E10 13E11 13E12   13B7  13B8  13B9 13B10 13B11 13B12'
-						printf,lun,'Tstart              Tend                Tmin			       Lrb      Lfb     MLTrb    MLTfb   distmin    dLmin	 dMLTmin       colS	       surS		  colHR		 surHR      FBb   EMFb      B1b   B2b                SpecETot_lf         SpecEMax_lf         SpecEAvg_lf         SpecEMed_lf                SpecETot_lb             SpecEMax_lb       SpecEAvg_lb           SpecEMed_lb            SpecETot_ub           SpecEMax_ub            SpecEAvg_ub         SpecEMed_ub           SpecBTot_lf         SpecBMax_lf         SpecBAvg_lf         SpecBMed_lf                SpecBTot_lb             SpecBMax_lb     SpecBAvg_lb            SpecBMed_lb             SpecBTot_ub              SpecBMax_ub        SpecBAvg_ub        SpecBMed_ub    7E3	  7E4     7E5     7E6    7B3	 7B4      7B5     7B6    13E6	  13E7    13E8    13E9    13E10   13E11    13E12   13B6	   13B7   13B8    13B9    13B10   13B11   13B12'
-	
 						close,lun
 						free_lun,lun
 		endif
@@ -993,10 +1063,8 @@ for j=0.,n_elements(tfb0)-1 do begin
 		min_sep = string(min_sep,format='(f10.5)')
 		min_dL = string(min_dL,format='(f9.3)')
 		min_dMLT = string(min_dMLT,format='(f9.3)')
-		max_counts_col = string(max_counts_col,format='(F12.2)')
-		max_counts_sur = string(max_counts_sur,format='(F12.2)')
+		max_flux_col = string(max_flux_col,format='(F12.2)')
 		max_HRflux_col = string(max_HRflux_col,format='(F12.2)')
-		max_HRflux_sur = string(max_HRflux_sur,format='(F12.2)')
 		nsec_hires = string(nsec_hires,format='(f8.1)')
 		nsec_emf = string(nsec_emf,format='(f8.1)')
 		nsec_b1 = string(nsec_b1,format='(f8.1)')
@@ -1070,9 +1138,9 @@ for j=0.,n_elements(tfb0)-1 do begin
 ;		if finite(min_sep) ne 0 then begin
 
 		openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun,/append
-	;	printf,lun,tmidtmp+lshell_min+mlt_min+min_sep+min_dL+min_dMLT+max_counts_col+max_counts_sur+nsec_emf+nsec_b1+nsec_b2+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
+	;	printf,lun,tmidtmp+lshell_min+mlt_min+min_sep+min_dL+min_dMLT+max_flux_col+max_counts_sur+nsec_emf+nsec_b1+nsec_b2+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
 		printf,lun,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
-		mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_counts_col+max_counts_sur+max_HRflux_col+max_HRflux_sur+$
+		mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_flux_col+max_HRflux_col+$
 		nsec_hires+nsec_emf+nsec_b1+nsec_b2+$
 		totalnonchorusspec_E+maxnonchorusspec_E+avgnonchorusspec_E+mediannonchorusspec_E+$
 		totalchorusspecL_E+maxchorusspecL_E+avgchorusspecL_E+medianchorusspecL_E+$
