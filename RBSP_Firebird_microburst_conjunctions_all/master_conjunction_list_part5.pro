@@ -20,7 +20,7 @@ fb = 'FU4'
 ;pmtime = 60.  ;plus/minus time (min) from closest conjunction for data consideration
 dettime = 0.75 ;(sec)  Time for detrending the hires data in order to obtain microburst amplitudes. 
 				;See firebird_subtract_tumble_from_hiresdata_testing.pro
-minlowf = 40. ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
+minlowf = 60. ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
 				;abnormally large power at the lowest spectral bins
 
 
@@ -229,10 +229,12 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'fce_eq',ttt,fce_eq & store_data,'fce_eq_2',ttt,fce_eq/2. & store_data,'fce_eq_10',ttt,fce_eq/10.
 		store_data,'fci_eq',ttt,fce_eq/1836. & store_data,'flh_eq',ttt,sqrt(fce_eq*fce_eq/1836.)
 
+
 		store_data,'rbsp'+probe+'_efw_spec64_e12ac_comb',data=['rbsp'+probe+'_efw_spec64_e12ac','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
 		store_data,'rbsp'+probe+'_efw_spec64_scmw_comb', data=['rbsp'+probe+'_efw_spec64_scmw','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
-		ylim,'rbsp'+probe+'_efw_spec64_e12ac_comb',1,6000,1
-		ylim,'rbsp'+probe+'_efw_spec64_scmw_comb',1,6000,1
+		ylim,'rbsp'+probe+'_efw_spec64_e12ac_comb',minlowf,6000,1
+		ylim,'rbsp'+probe+'_efw_spec64_scmw_comb',minlowf,6000,1
+
 
 		store_data,'lcomb',data=['rbsp'+probe+'_state_lshell','McIlwainL']
 		store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt','MLT']
@@ -250,8 +252,8 @@ for j=0.,n_elements(tfb0)-1 do begin
 		t0z = tmid - 3600.   ;used only for determining closest approach
 		t1z = tmid + 3600.
 
-		print,time_string(t0z)
-		print,time_string(t1z)
+;		print,time_string(t0z)
+;		print,time_string(t1z)
 		if testing then stop
 
 
@@ -363,43 +365,8 @@ for j=0.,n_elements(tfb0)-1 do begin
 		endif
 
 
-;		lshell_min_rb = !values.f_nan
-;		lshell_min_fb = !values.f_nan
-;		mlt_min_rb = !values.f_nan
-;		mlt_min_fb = !values.f_nan
-;
-;		if whsep ne -1 then begin
-;			l2_probe = tsample('rbsp'+probe+'_state_lshell_interp_tc',tt[boo[whsep]],times=t)
-;			lshell_min_rb = l2_probe
-;			mlt2_probe = tsample('rbsp'+probe+'_state_mlt_interp_tc',tt[boo[whsep]],times=t)
-;			mlt_min_rb = mlt2_probe
-;
-;			l2_fb = tsample('fb_mcilwainL_tc',tt[boo[whsep]],times=t)
-;			lshell_min_fb = l2_fb
-;			mlt2_fb = tsample('fb_mlt_tc',tt[boo[whsep]],times=t)
-;			mlt_min_fb = mlt2_fb
-;		endif
 
 
-		;There are quite a number of orbits where there's no overlapping FB and RBSP ephemeris data. 
-		;When this is the case, determine the RBSP L, MLT values as the average value during the start 
-		;and stop of the conjunction. Nothing I can do about the missing FB data, but at least the RBSP
-		;data will tell me where the conjunction took place.  
-		;DON'T use the interpolated values for this b/c the FB gaps show up in the RBSP ephemeris data
-
-;		if finite(lshell_min_rb) eq 0 then begin 
-;			l2_probe = tsample('rbsp'+probe+'_state_lshell',[t0[j],t1[j]],times=t)
-;			lshell_min_rb = mean(l2_probe,/nan)
-;			mlt2_probe = tsample('rbsp'+probe+'_state_mlt',[t0[j],t1[j]],times=t)
-;			mlt_min_rb = mean(mlt2_probe,/nan)
-;		endif
-;
-;		;Sometimes the FB values are outrageous. Fix them here. 
-;		if min_sep gt 100. then begin 
-;			min_sep = !values.f_nan
-;			min_dL = !values.f_nan
-;			lshell_min_fb = !values.f_nan
-;		endif
 
 
 
@@ -504,15 +471,14 @@ for j=0.,n_elements(tfb0)-1 do begin
 			endfor
 		endif
 
+		;A common problem is that low freq broadband spikes/noise leaks into the chorus lower band. 
+		;Here, remove chorus lower band power if the broadband power at >100 Hz at that exact time is greater 
+		goodv = where(dd.v gt 100.)
+		for bb=0,n_elements(spectmpL[*,0])-1 do if max(spectmpO[bb,goodv],/nan) gt max(spectmpL[bb,*],/nan) then spectmpL[bb,*] = !values.f_nan
+
 		store_data,'tmpL',tt,spectmpL,dd.v,dlim=dlim,lim=lim
 		store_data,'tmpU',tt,spectmpU,dd.v,dlim=dlim,lim=lim
 		store_data,'tmpO',tt,spectmpO,dd.v,dlim=dlim,lim=lim
-;		if testing then begin
-;			ylim,['tmpU','tmpL','tmpO'],1,6000,1
-;			tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','tmpU','tmpL','tmpO'] & tlimit,t0z2,t1z
-;		stop
-;		endif
-
 
 
 		for ii=0,nchunks-2 do begin 
@@ -520,13 +486,14 @@ for j=0.,n_elements(tfb0)-1 do begin
 			tmin[ii] = t0z2 + ii*tdelta
 			tmax[ii] = t0z2 + (ii+1)*tdelta
 
-			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
+;			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
 		
 
 			fcetmp = tsample('fce_eq_interp',[tmin[ii],tmax[ii]],times=tt)
 			spectmpL = tsample('tmpL',[tmin[ii],tmax[ii]],times=tt2)
 			spectmpU = tsample('tmpU',[tmin[ii],tmax[ii]])
 			spectmpO = tsample('tmpO',[tmin[ii],tmax[ii]])
+
 
 			if finite(fcetmp[0]) then begin
 
@@ -574,18 +541,12 @@ for j=0.,n_elements(tfb0)-1 do begin
 			endelse
 		endfor
 
-		;A common problem is that low freq broadband spikes/noise leaks into the chorus lower band. 
-		;Here, remove "chorus" power if the broadband power at that exact time is greater 
-		goo = where(maxnonchorusspec_E gt maxchorusspecL_E)
-		if goo[0] ne -1 then begin 
-			maxchorusspecL_E[goo] = !values.f_nan
-			avgchorusspecL_E[goo] = !values.f_nan
-			medianchorusspecL_E[goo] = !values.f_nan
-			totalchorusspecL_E[goo] = !values.f_nan
-		endif
 
 	;**************************
 	;Testing: compare max determined values with spectral plot.
+		timespan,t0z,t1z-t0z,/sec
+
+
 
 		get_data,'tmpL',data=dd
 		maxspec = fltarr(n_elements(dd.x))
@@ -596,15 +557,17 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstlb_max',(tmin+tmax)/2.,maxchorusspecL_E
 		store_data,'tstlb_med',(tmin+tmax)/2.,medianchorusspecL_E
 		store_data,'tstlb_avg',(tmin+tmax)/2.,avgchorusspecL_E
-		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg'],'colors',250
-		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg'],'psym',-4
 		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakL_E & options,'fpeaklb','psym',-4
-		store_data,'specLcomb',data=['tmpL','fpeaklb'] & ylim,['rbsp'+probe+'_efw_spec64_e12ac_comb','specLcomb'],minlowf,6000,1
-		store_data,'loccombL',data=['maxspecL','tstlb_tot','tstlb_max','tstlb_med','tstlb_avg']
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'colors',250
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'psym',-4
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'thick',2
+		store_data,'specLcomb',data=['tmpL','fce_eq','fce_eq_2','fce_eq_10','fpeaklb'] & ylim,'specLcomb',minlowf,6000,1
+		options,'specLcomb','ytitle','Ew spec!Clowerband'
+		store_data,'loccombL',data=['maxspecL','tstlb_max','tstlb_med','tstlb_avg']
+		options,'loccombL','ytitle','max power!Clowerband'
 		ylim,'loccombL',min(maxspec,/nan),2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specLcomb','loccombL']
-		tlimit,t0z,t1z
-		
+		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specLcomb','specLcomb_removed','loccombL']
+	
 	stop	
 
 		get_data,'tmpU',data=dd
@@ -616,13 +579,16 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstub_max',(tmin+tmax)/2.,maxchorusspecU_E
 		store_data,'tstub_med',(tmin+tmax)/2.,medianchorusspecU_E
 		store_data,'tstub_avg',(tmin+tmax)/2.,avgchorusspecU_E
-		options,['tstub_tot','tstub_max','tstub_med','tstub_avg'],'colors',250
-		options,['tstub_tot','tstub_max','tstub_med','tstub_avg'],'psym',-4
 		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakU_E & options,'fpeakub','psym',-4
-		store_data,'specUcomb',data=['tmpU','fpeakub'] & ylim,['rbsp'+probe+'_efw_spec64_e12ac_comb','specUcomb'],minlowf,6000,1
-		store_data,'loccombU',data=['maxspecU','tstub_tot','tstub_max','tstub_med','tstub_avg']
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'colors',250
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'psym',-4
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'thick',2
+		store_data,'specUcomb',data=['tmpU','fce_eq','fce_eq_2','fce_eq_10','fpeakub'] & ylim,'specUcomb',minlowf,6000,1
+		options,'specUcomb','ytitle','Ew spec!Cupperband'
+		store_data,'loccombU',data=['maxspecU','tstub_max','tstub_med','tstub_avg']
+		options,'loccombU','ytitle','max power!Cupperband'
 		ylim,'loccombU',min(maxspec,/nan),2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specUcomb','loccombU']
+		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specUcomb','specUcomb_removed','loccombU']
 
 	stop	
 
@@ -635,13 +601,16 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstlf_max',(tmin+tmax)/2.,maxnonchorusspec_E
 		store_data,'tstlf_med',(tmin+tmax)/2.,mediannonchorusspec_E
 		store_data,'tstlf_avg',(tmin+tmax)/2.,avgnonchorusspec_E
-		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg'],'colors',250
-		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg'],'psym',-4
 		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakO_E & options,'fpeaklf','psym',-4
-		store_data,'specOcomb',data=['tmpO','fpeaklf'] & ylim,['rbsp'+probe+'_efw_spec64_e12ac_comb','specOcomb'],minlowf,6000,1
-		store_data,'loccombO',data=['maxspecO','tstlf_tot','tstlf_max','tstlf_med','tstlf_avg']
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'colors',250
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'psym',-4
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'thick',2
+		store_data,'specOcomb',data=['tmpO','fce_eq','fce_eq_2','fce_eq_10','fpeaklf'] & ylim,'specOcomb',minlowf,6000,1
+		options,'specOcomb','ytitle','Ew spec!Clow freqs'
+		store_data,'loccombO',data=['maxspecO','tstlf_max','tstlf_med','tstlf_avg']
+		options,'loccombO','ytitle','max power!Clow freqs'
 		ylim,'loccombO',min(maxspec,/nan)/100.,2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specOcomb','loccombO']
+		tplot,['rbsp'+probe+'_efw_spec64_e12ac_comb','specOcomb','specOcomb_removed','loccombO']
 
 	stop	
 
@@ -677,14 +646,15 @@ for j=0.,n_elements(tfb0)-1 do begin
 			endfor
 		endif
 
+
+		;A common problem is that low freq broadband spikes/noise leaks into the chorus lower band. 
+		;Here, remove chorus lower band power if the broadband power at >100 Hz at that exact time is greater 
+		goodv = where(dd.v gt 100.)
+		for bb=0,n_elements(spectmpL[*,0])-1 do if max(spectmpO[bb,goodv],/nan) gt max(spectmpL[bb,*],/nan) then spectmpL[bb,*] = !values.f_nan
+
 		store_data,'tmpL',tt,spectmpL,dd.v,dlim=dlim,lim=lim
 		store_data,'tmpU',tt,spectmpU,dd.v,dlim=dlim,lim=lim
 		store_data,'tmpO',tt,spectmpO,dd.v,dlim=dlim,lim=lim
-;		if testing then begin
-;		ylim,['tmpU','tmpL','tmpO'],1,6000,1
-;		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','tmpU','tmpL','tmpO'] & tlimit,t0z2,t1z2
-;		stop
-;		endif
 
 
 		for ii=0,nchunks-2 do begin 
@@ -692,12 +662,13 @@ for j=0.,n_elements(tfb0)-1 do begin
 			tmin[ii] = t0z2 + ii*tdelta
 			tmax[ii] = t0z2 + (ii+1)*tdelta
 
-			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
+;			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
 		
 			fcetmp = tsample('fce_eq_interp',[tmin[ii],tmax[ii]],times=tt)
 			spectmpL = tsample('tmpL',[tmin[ii],tmax[ii]],times=tt2)
 			spectmpU = tsample('tmpU',[tmin[ii],tmax[ii]],times=tt2)
 			spectmpO = tsample('tmpO',[tmin[ii],tmax[ii]],times=tt2)
+
 
 			if finite(fcetmp[0]) then begin
 
@@ -746,16 +717,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			endelse
 		endfor
 
-		;A common problem is that low freq broadband spikes/noise leaks into the chorus lower band. 
-		;Here, remove "chorus" power if the broadband power at that exact time is greater 
-		goo = where(maxnonchorusspec_B gt maxchorusspecL_B)
-		if goo[0] ne -1 then begin 
-			maxchorusspecL_B[goo] = !values.f_nan
-			avgchorusspecL_B[goo] = !values.f_nan
-			medianchorusspecL_B[goo] = !values.f_nan
-			totalchorusspecL_B[goo] = !values.f_nan
-		endif
-
 
 		tlimit,t0z,t1z
 
@@ -768,13 +729,16 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstlb_max',(tmin+tmax)/2.,maxchorusspecL_B
 		store_data,'tstlb_med',(tmin+tmax)/2.,medianchorusspecL_B
 		store_data,'tstlb_avg',(tmin+tmax)/2.,avgchorusspecL_B
-		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg'],'colors',250
-		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg'],'psym',-4
 		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakL_B & options,'fpeaklb','psym',-4
-		store_data,'specLcomb',data=['tmpL','fpeaklb'] & ylim,['rbsp'+probe+'_efw_spec64_scmw_comb','specLcomb'],minlowf,6000,1
-		store_data,'loccombL',data=['maxspecL','tstlb_tot','tstlb_max','tstlb_med','tstlb_avg']
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'colors',250
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'psym',-4
+		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'thick',2
+		store_data,'specLcomb',data=['tmpL','fce_eq','fce_eq_2','fce_eq_10','fpeaklb'] & ylim,'specLcomb',minlowf,6000,1
+		options,'specLcomb','ytitle','Bw spec!Clowerband'
+		store_data,'loccombL',data=['maxspecL','tstlb_max','tstlb_med','tstlb_avg']
+		options,'loccombL','ytitle','max power!Clowerband'
 		ylim,'loccombL',min(maxspec,/nan),2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specLcomb','loccombL']
+		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specLcomb','specLcomb_removed','loccombL']
 
 	stop	
 
@@ -787,13 +751,16 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstub_max',(tmin+tmax)/2.,maxchorusspecU_B
 		store_data,'tstub_med',(tmin+tmax)/2.,medianchorusspecU_B
 		store_data,'tstub_avg',(tmin+tmax)/2.,avgchorusspecU_B
-		options,['tstub_tot','tstub_max','tstub_med','tstub_avg'],'colors',250
-		options,['tstub_tot','tstub_max','tstub_med','tstub_avg'],'psym',-4
 		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakU_B & options,'fpeakub','psym',-4
-		store_data,'specUcomb',data=['tmpU','fpeakub'] & ylim,['rbsp'+probe+'_efw_spec64_scmw_comb','specUcomb'],minlowf,6000,1
-		store_data,'loccombU',data=['maxspecU','tstub_tot','tstub_max','tstub_med','tstub_avg']
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'colors',250
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'psym',-4
+		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'thick',2
+		store_data,'specUcomb',data=['tmpU','fce_eq','fce_eq_2','fce_eq_10','fpeakub'] & ylim,'specUcomb',minlowf,6000,1
+		options,'specUcomb','ytitle','Bw spec!Cupperband'
+		store_data,'loccombU',data=['maxspecU','tstub_max','tstub_med','tstub_avg']
+		options,'loccombU','ytitle','max power!Cupperband'
 		ylim,'loccombU',min(maxspec,/nan),2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specUcomb','loccombU']
+		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specUcomb','specUcomb_removed','loccombU']
 
 	stop	
 
@@ -806,13 +773,16 @@ for j=0.,n_elements(tfb0)-1 do begin
 		store_data,'tstlf_max',(tmin+tmax)/2.,maxnonchorusspec_B
 		store_data,'tstlf_med',(tmin+tmax)/2.,mediannonchorusspec_B
 		store_data,'tstlf_avg',(tmin+tmax)/2.,avgnonchorusspec_B
-		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg'],'colors',250
-		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg'],'psym',-4
 		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakO_B & options,'fpeaklf','psym',-4
-		store_data,'specOcomb',data=['tmpO','fpeaklf'] & ylim,['rbsp'+probe+'_efw_spec64_scmw_comb','specOcomb'],minlowf,6000,1
-		store_data,'loccombO',data=['maxspecO','tstlf_tot','tstlf_max','tstlf_med','tstlf_avg']
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'colors',250
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'psym',-4
+		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'thick',2
+		store_data,'specOcomb',data=['tmpO','fce_eq','fce_eq_2','fce_eq_10','fpeaklf'] & ylim,'specOcomb',minlowf,6000,1 & ylim,'specOcomb_removed',minlowf,6000,1
+		options,'specOcomb','ytitle','Bw spec!Clow freqs'
+		store_data,'loccombO',data=['maxspecO','tstlf_max','tstlf_med','tstlf_avg']
+		options,'loccombO','ytitle','max power!Clow freqs'
 		ylim,'loccombO',min(maxspec,/nan)/100.,2*max(maxspec,/nan),1
-		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specOcomb','loccombO']
+		tplot,['rbsp'+probe+'_efw_spec64_scmw_comb','specOcomb','specOcomb_removed','loccombO']
 
 	stop	
 
