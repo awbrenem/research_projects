@@ -16,6 +16,10 @@
 ;Header information for files produced is at RBSP_FU_conjunction_header.fmt
 
 
+;Required external programs:
+;SPEDAS software package 
+;sample_rate.pro 
+
 
 
 ;********************
@@ -40,23 +44,10 @@
 
 
 
-;*********PROBLEM:
-;J=253
-;% RBSP_LOAD_EMFISIS: Loading default 4sec L3 data...
-;SPD_DOWNLOAD_FILE(226): Downloading: https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
-;SPD_DOWNLOAD_FILE(280):   0 bytes complete   (0.0 KB/s)
-;% Compiled module: SPD_NETURL_ERROR2MSG.
-;SPD_DOWNLOAD_FILE(313): Unable to download file:  https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
-;SPD_DOWNLOAD_FILE(313): HTTPS Error: Failed to connect to host or proxy.
-;SPD_DOWNLOAD(238): No matching remote files found. Searching for local files.
-;CDF_LOAD_VARS(164): File not found: "/Users/aaronbreneman/data/rbsp/emfisis/Flight/RBSP-B/L3/2015/05/23/rbsp-b_magnetometer_4sec-gsm_emfisis-L3_20150523_*.cdf"
-;CDF_INFO_TO_TPLOT(30): Must provide a CDF structure
-;RBSP_LOAD_EMFISIS(306): No EMFISIS MAG SEN data loaded... Probe: b
-;STORE_DATA(271): Creating tplot variable: 37 fb_conjunction_times
-;TINTERPOL_MXN(334): uz_tvar must be set for tinterpol_mxn to work
-;% Illegal variable attribute: Y.
-;% Execution halted at: $MAIN$            273 /Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/master_conjunction_list_p
-;  art3.pro
+;*********CURRENTLY AT:
+;J=257
+;*********
+
 
 
 ;Grab local path to save data
@@ -417,7 +408,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;+/-1 hr of conjunction
 		;-----------------------------------------------------------
 
-
+stop
 		;First the Electric field
 		get_data,'rbsp'+probe+'_efw_spec64_e12ac',data=dd,dlim=dlim,lim=lim
 		spectmp = tsample('rbsp'+probe+'_efw_spec64_e12ac',[t0z,t1z],times=tt)
@@ -849,7 +840,7 @@ store_data,'comb',data=['fb_col_flux_tc','fb_col_flux_tc_smoothed']
 options,'comb','colors',[0,250]
 options,'comb','ytitle','Hires flux!Cvs smoothed'
 
-get_data,'ldiff',dd.x,dd.y
+get_data,'ldiff',data=dd
 store_data,'poneline',dd.x,replicate(1.,n_elements(dd.x))
 store_data,'moneline',dd.x,replicate(-1.,n_elements(dd.x))
 store_data,'l_mlt_diffcomb',data=['ldiff','mltdiff','poneline','moneline']
@@ -932,14 +923,19 @@ endif
 	;	tplot,[strlowcase(fb)+'_fb_col_hires_flux','fb_col_flux_tc','fb_col_flux_tc_detrend']
 		
 		;Figure out if we're dealing with e12 or e34 for FBK data 
+		e1234 = ''
 		tstvar = tnames('rbsp'+probe+'_efw_fbk7_e??dc_pk')
 		if tstvar ne '' then e1234 = strmid(tstvar,15,3)		
 		tstvar = tnames('rbsp'+probe+'_efw_fbk13_e??dc_pk')
 		if tstvar ne '' then e1234 = strmid(tstvar,16,3)
 
 
+
+
+
 		;---------------------------------------------------------------
 		;Find max filterbank value in various bins for FBK7 mode
+
 		get_data,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',data=dat
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc'
 		get_data,'rbsp'+probe+'_efw_fbk7_scmw_pk',data=dat
@@ -1016,7 +1012,6 @@ endif
 			fbk13_Bwmax_11 = !values.f_nan
 			fbk13_Bwmax_12 = !values.f_nan
 		endelse
-
 	;-----------------------------------------------
 
 		options,'ldiff_tc_comb','ytitle','Lshell!CRBSP'+probe+'-'+fb
