@@ -2,7 +2,7 @@
 ;This computes statistics of chorus waves at set time intervals away from the closest conjunction. 
 ;This allows me to see the correlation b/t chorus and microbursts change as a function of separation. 
 
-
+;2018 Feb 26th --test day for LH waves
 
 ;Grab local path to save data
 homedir = (file_search('~',/expand_tilde))[0]+'/'
@@ -17,7 +17,6 @@ noplot = 1
 
 probe = 'b'
 fb = 'FU4'
-;pmtime = 60.  ;plus/minus time (min) from closest conjunction for data consideration
 dettime = 0.75 ;(sec)  Time for detrending the hires data in order to obtain microburst amplitudes. 
 				;See firebird_subtract_tumble_from_hiresdata_testing.pro
 minlowf = 60. ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
@@ -35,8 +34,6 @@ if hires then suffix = '_conjunctions_hr.sav' else suffix = '_conjunctions.sav'
 ;--------------
 ;Conjunction data for all the FIREBIRD passes with HiRes data
 path = homedir + 'Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/'
-
-;pathoutput = '/'+strvals[0]+'/'+strvals[1]+'/Desktop/'
 
 
 fn = fb+'_'+'RBSP'+strupcase(probe)+suffix
@@ -228,10 +225,11 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		store_data,'fce_eq',ttt,fce_eq & store_data,'fce_eq_2',ttt,fce_eq/2. & store_data,'fce_eq_10',ttt,fce_eq/10.
 		store_data,'fci_eq',ttt,fce_eq/1836. & store_data,'flh_eq',ttt,sqrt(fce_eq*fce_eq/1836.)
+		options,'flh_eq','color',1
+		options,'fce_eq','color',2
 
-
-		store_data,'rbsp'+probe+'_efw_spec64_e12ac_comb',data=['rbsp'+probe+'_efw_spec64_e12ac','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
-		store_data,'rbsp'+probe+'_efw_spec64_scmw_comb', data=['rbsp'+probe+'_efw_spec64_scmw','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
+		store_data,'rbsp'+probe+'_efw_spec64_e12ac_comb',data=['rbsp'+probe+'_efw_spec64_e12ac','fce_eq','fce_eq_2','fce_eq_10','flh_eq']
+		store_data,'rbsp'+probe+'_efw_spec64_scmw_comb', data=['rbsp'+probe+'_efw_spec64_scmw','fce_eq','fce_eq_2','fce_eq_10','flh_eq']
 		ylim,'rbsp'+probe+'_efw_spec64_e12ac_comb',minlowf,6000,1
 		ylim,'rbsp'+probe+'_efw_spec64_scmw_comb',minlowf,6000,1
 
@@ -252,14 +250,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		t0z = tmid - 3600.   ;used only for determining closest approach
 		t1z = tmid + 3600.
 
-;		print,time_string(t0z)
-;		print,time_string(t1z)
 		if testing then stop
-
-
-
-
-
 
 
 
@@ -312,7 +303,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
 		get_data,'separation_absolute',tt,dat
 
-;stop
+
 		whsep = -1
 		min_sep = !values.f_nan
 		min_sep_time = !values.f_nan
@@ -368,9 +359,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
-
-
-
 		tconj = min_sep_time
 		t0z2 = tconj - time_extent
 		t1z2 = tconj + time_extent
@@ -394,6 +382,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		fbk13_Ewmax_6 = d & fbk13_Ewmax_7 = d & fbk13_Ewmax_8 = d & fbk13_Ewmax_9 = d & fbk13_Ewmax_10 = d & fbk13_Ewmax_11 = d & fbk13_Ewmax_12 = d
 		fbk13_Bwmax_6 = d & fbk13_Bwmax_7 = d & fbk13_Bwmax_8 = d & fbk13_Bwmax_9 = d & fbk13_Bwmax_10 = d & fbk13_Bwmax_11 = d & fbk13_Bwmax_12 = d
 
+		sepmin = d & sepmax = d
 		lmin = d & lmax = d & lmed = d & lavg = d
 		mltmin = d & mltmax = d & mltmed = d & mltavg = d
 		dlmin = d & dlmax = d & dlmed = d & dlavg = d
@@ -418,11 +407,22 @@ for j=0.,n_elements(tfb0)-1 do begin
 			lvals = tsample('rbsp'+probe+'_state_lshell',[tmin[ii],tmax[ii]],time=tms)
 			mltvals = tsample('rbsp'+probe+'_state_mlt',[tmin[ii],tmax[ii]],time=tms)
 
-			;We'll reference dL and dMLT from the FIREBIRD values at closest approach
-			Lref = tsample('McIlwainL',tconj,times=tms)
-			MLTref = tsample('MLT',tconj,times=tms)
+
+			;We'll reference dL, dMLT, and separation_absolute from the FIREBIRD values at closest approach
+			Lref = tsample('McIlwainL',tconj)
+			MLTref = tsample('MLT',tconj)
 			dlvals = lvals - Lref
 			dmltvals = mltvals - MLTref
+
+			store_data,'tmp_fbL',tms,replicate(Lref,n_elements(tms))
+			store_data,'tmp_fbMLT',tms,replicate(MLTref,n_elements(tms))
+			store_data,'tmp_rbL',tms,lvals
+			store_data,'tmp_rbMLT',tms,mltvals
+
+			sc_absolute_separation,'tmp_rbL','tmp_fbL',$
+				'tmp_rbMLT','tmp_fbMLT';,/km
+
+			sepvals = tsample('separation_absolute',[tmin[ii],tmax[ii]],time=tms)
 
 			lmin[ii] = min(lvals,/nan) & lmax[ii] = max(lvals,/nan)
 			lmed[ii] = median(lvals) & lavg[ii] = mean(lvals,/nan)
@@ -433,6 +433,8 @@ for j=0.,n_elements(tfb0)-1 do begin
 			dlmed[ii] = median(dlvals) & dlavg[ii] = mean(dlvals,/nan)
 			dmltmin[ii] = min(dmltvals,/nan) & dmltmax[ii] = max(dmltvals,/nan)
 			dmltmed[ii] = median(dmltvals) & dmltavg[ii] = mean(dmltvals,/nan)
+
+			sepmin[ii] = min(sepvals,/nan) & sepmax[ii] = max(sepvals,/nan)
 
 		endfor
 
@@ -486,7 +488,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			tmin[ii] = t0z2 + ii*tdelta
 			tmax[ii] = t0z2 + (ii+1)*tdelta
 
-;			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
 		
 
 			fcetmp = tsample('fce_eq_interp',[tmin[ii],tmax[ii]],times=tt)
@@ -525,13 +526,26 @@ for j=0.,n_elements(tfb0)-1 do begin
 					freqpeakO_E[ii] = dd.v[yind]
 				endif else freqpeakO_E[ii] = !values.f_nan
 
-				avgchorusspecL_E[ii] = mean(spectmpL,/nan) & if avgchorusspecL_E[ii] eq 0. then avgchorusspecL_E[ii] = !values.f_nan
-				avgchorusspecU_E[ii] = mean(spectmpU,/nan) & if avgchorusspecU_E[ii] eq 0. then avgchorusspecU_E[ii] = !values.f_nan
-				avgnonchorusspec_E[ii] = mean(spectmpO,/nan) & if avgnonchorusspec_E[ii] eq 0. then avgnonchorusspec_E[ii] = !values.f_nan
 
-				medianchorusspecL_E[ii] = median(spectmpL) & if medianchorusspecL_E[ii] eq 0. then medianchorusspecL_E[ii] = !values.f_nan
-				medianchorusspecU_E[ii] = median(spectmpU) & if medianchorusspecU_E[ii] eq 0. then medianchorusspecU_E[ii] = !values.f_nan
-				mediannonchorusspec_E[ii] = median(spectmpO) & if mediannonchorusspec_E[ii] eq 0. then mediannonchorusspec_E[ii] = !values.f_nan
+
+
+				;NEED TO TAKE MEDIAN AND AVERAGE OF ALL THE "MAX" VALUES WITHIN CURRENT TIME BLOCK
+				;CURRENTLY I'M TAKING THE MED/AVG OVER EVERYTHING IN THAT BLOCK...AND THAT INCLUDES ALL THE FREQS WHERE THE WAVE 
+				;POWER HAS FALLEN OFF FROM THE PEAK. 
+				maxtmpL = fltarr(n_elements(spectmpL[0,*]))
+				for q=0,n_elements(spectmpL[0,*])-1 do maxtmpL[q] = max(spectmpL[q,*],/nan)
+				maxtmpU = fltarr(n_elements(spectmpU[0,*]))
+				for q=0,n_elements(spectmpU[0,*])-1 do maxtmpU[q] = max(spectmpU[q,*],/nan)
+				maxtmpO = fltarr(n_elements(spectmpO[0,*]))
+				for q=0,n_elements(spectmpO[0,*])-1 do maxtmpO[q] = max(spectmpO[q,*],/nan)
+
+				avgchorusspecL_E[ii] = mean(maxtmpL,/nan) & if avgchorusspecL_E[ii] eq 0. then avgchorusspecL_E[ii] = !values.f_nan
+				avgchorusspecU_E[ii] = mean(maxtmpU,/nan) & if avgchorusspecU_E[ii] eq 0. then avgchorusspecU_E[ii] = !values.f_nan
+				avgnonchorusspec_E[ii] = mean(maxtmpO,/nan) & if avgnonchorusspec_E[ii] eq 0. then avgnonchorusspec_E[ii] = !values.f_nan
+
+				medianchorusspecL_E[ii] = median(maxtmpL) & if medianchorusspecL_E[ii] eq 0. then medianchorusspecL_E[ii] = !values.f_nan
+				medianchorusspecU_E[ii] = median(maxtmpU) & if medianchorusspecU_E[ii] eq 0. then medianchorusspecU_E[ii] = !values.f_nan
+				mediannonchorusspec_E[ii] = median(maxtmpO) & if mediannonchorusspec_E[ii] eq 0. then mediannonchorusspec_E[ii] = !values.f_nan
 
 			endif else begin
 				totalchorusspecL_E[ii] = !values.f_nan & totalchorusspecU_E[ii] = !values.f_nan & totalnonchorusspec_E[ii] = !values.f_nan
@@ -545,8 +559,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 	;**************************
 	;Testing: compare max determined values with spectral plot.
 		timespan,t0z,t1z-t0z,/sec
-
-
 
 		get_data,'tmpL',data=dd
 		maxspec = fltarr(n_elements(dd.x))
@@ -662,7 +674,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			tmin[ii] = t0z2 + ii*tdelta
 			tmax[ii] = t0z2 + (ii+1)*tdelta
 
-;			print,time_string(tmin[ii]), ' - ', time_string(tmax[ii])
 		
 			fcetmp = tsample('fce_eq_interp',[tmin[ii],tmax[ii]],times=tt)
 			spectmpL = tsample('tmpL',[tmin[ii],tmax[ii]],times=tt2)
@@ -701,13 +712,24 @@ for j=0.,n_elements(tfb0)-1 do begin
 				endif else freqpeakO_B[ii] = !values.f_nan
 
 
-				avgchorusspecL_B[ii] = mean(spectmpL,/nan) & if avgchorusspecL_B[ii] eq 0. then avgchorusspecL_B[ii] = !values.f_nan
-				avgchorusspecU_B[ii] = mean(spectmpU,/nan) & if avgchorusspecU_B[ii] eq 0. then avgchorusspecU_B[ii] = !values.f_nan
-				avgnonchorusspec_B[ii] = mean(spectmpO,/nan) & if avgnonchorusspec_B[ii] eq 0. then avgnonchorusspec_B[ii] = !values.f_nan
+				;NEED TO TAKE MEDIAN AND AVERAGE OF ALL THE "MAX" VALUES WITHIN CURRENT TIME BLOCK
+				;CURRENTLY I'M TAKING THE MED/AVG OVER EVERYTHING IN THAT BLOCK...AND THAT INCLUDES ALL THE FREQS WHERE THE WAVE 
+				;POWER HAS FALLEN OFF FROM THE PEAK. 
+				maxtmpL = fltarr(n_elements(spectmpL[0,*]))
+				for q=0,n_elements(spectmpL[0,*])-1 do maxtmpL[q] = max(spectmpL[q,*],/nan)
+				maxtmpU = fltarr(n_elements(spectmpU[0,*]))
+				for q=0,n_elements(spectmpU[0,*])-1 do maxtmpU[q] = max(spectmpU[q,*],/nan)
+				maxtmpO = fltarr(n_elements(spectmpO[0,*]))
+				for q=0,n_elements(spectmpO[0,*])-1 do maxtmpO[q] = max(spectmpO[q,*],/nan)
 
-				medianchorusspecL_B[ii] = median(spectmpL) & if medianchorusspecL_B[ii] eq 0. then medianchorusspecL_B[ii] = !values.f_nan
-				medianchorusspecU_B[ii] = median(spectmpU) & if medianchorusspecU_B[ii] eq 0. then medianchorusspecU_B[ii] = !values.f_nan
-				mediannonchorusspec_B[ii] = median(spectmpO) & if mediannonchorusspec_B[ii] eq 0. then mediannonchorusspec_B[ii] = !values.f_nan
+
+				avgchorusspecL_B[ii] = mean(maxtmpL,/nan) & if avgchorusspecL_B[ii] eq 0. then avgchorusspecL_B[ii] = !values.f_nan
+				avgchorusspecU_B[ii] = mean(maxtmpU,/nan) & if avgchorusspecU_B[ii] eq 0. then avgchorusspecU_B[ii] = !values.f_nan
+				avgnonchorusspec_B[ii] = mean(maxtmpO,/nan) & if avgnonchorusspec_B[ii] eq 0. then avgnonchorusspec_B[ii] = !values.f_nan
+
+				medianchorusspecL_B[ii] = median(maxtmpL) & if medianchorusspecL_B[ii] eq 0. then medianchorusspecL_B[ii] = !values.f_nan
+				medianchorusspecU_B[ii] = median(maxtmpU) & if medianchorusspecU_B[ii] eq 0. then medianchorusspecU_B[ii] = !values.f_nan
+				mediannonchorusspec_B[ii] = median(maxtmpO) & if mediannonchorusspec_B[ii] eq 0. then mediannonchorusspec_B[ii] = !values.f_nan
 
 			endif else begin
 				totalchorusspecL_B[ii] = !values.f_nan & totalchorusspecU_B[ii] = !values.f_nan & totalnonchorusspec_B[ii] = !values.f_nan
@@ -815,13 +837,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			fcetmp = tsample('fce_eq_interp',[tmin[ii],tmax[ii]],times=tt)
 
 
-
-;			if tdexists('rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',tmin[ii],tmax[ii]) then time_clip,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',tmin[ii],tmax[ii],newname='rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc'
-;			if tdexists('rbsp'+probe+'_efw_fbk7_scmw_pk',tmin[ii],tmax[ii]) then time_clip,'rbsp'+probe+'_efw_fbk7_scmw_pk',tmin[ii],tmax[ii],newname='rbsp'+probe+'_efw_fbk7_scmw_pk_tc'
-;			;Find max filterbank value in various bins for FBK13 mode
-;			if tdexists('rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk',tmin[ii],tmax[ii]) then time_clip,'rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk',tmin[ii],tmax[ii],newname='rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk_tc'
-;			if tdexists('rbsp'+probe+'_efw_fbk13_scmw_pk',tmin[ii],tmax[ii]) then time_clip,'rbsp'+probe+'_efw_fbk13_scmw_pk',tmin[ii],tmax[ii],newname='rbsp'+probe+'_efw_fbk13_scmw_pk_tc'
-
 			undefine,fbktmp_7E, fbktmp_7B, fbktmp_13E, fbktmp_13B
 
 			if tdexists('rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',tmin[ii],tmax[ii]) then $
@@ -901,37 +916,39 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
+		;****************************************************
+		;Plots for testing FBK data
 
-split_vec,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk'
-split_vec,'rbsp'+probe+'_efw_fbk7_scmw_pk'
-options,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_?','spec',0
-options,'rbsp'+probe+'_efw_fbk7_scmw_pk_?','spec',0
+		skip = 1 
+		if not skip then begin 
+			split_vec,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk'
+			split_vec,'rbsp'+probe+'_efw_fbk7_scmw_pk'
+			options,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_?','spec',0
+			options,'rbsp'+probe+'_efw_fbk7_scmw_pk_?','spec',0
 
-store_data,'fbk7_Ewmax_3',(tmin+tmax)/2.,fbk7_Ewmax_3
-store_data,'fbk7_Ewmax_4',(tmin+tmax)/2.,fbk7_Ewmax_4
-store_data,'fbk7_Ewmax_5',(tmin+tmax)/2.,fbk7_Ewmax_5
-store_data,'fbk7_Ewmax_6',(tmin+tmax)/2.,fbk7_Ewmax_6
-store_data,'fbk7_Ewmax_3_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_3','fbk7_Ewmax_3']
-store_data,'fbk7_Ewmax_4_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_4','fbk7_Ewmax_4']
-store_data,'fbk7_Ewmax_5_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_5','fbk7_Ewmax_5']
-store_data,'fbk7_Ewmax_6_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_6','fbk7_Ewmax_6']
+			store_data,'fbk7_Ewmax_3',(tmin+tmax)/2.,fbk7_Ewmax_3
+			store_data,'fbk7_Ewmax_4',(tmin+tmax)/2.,fbk7_Ewmax_4
+			store_data,'fbk7_Ewmax_5',(tmin+tmax)/2.,fbk7_Ewmax_5
+			store_data,'fbk7_Ewmax_6',(tmin+tmax)/2.,fbk7_Ewmax_6
+			store_data,'fbk7_Ewmax_3_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_3','fbk7_Ewmax_3']
+			store_data,'fbk7_Ewmax_4_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_4','fbk7_Ewmax_4']
+			store_data,'fbk7_Ewmax_5_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_5','fbk7_Ewmax_5']
+			store_data,'fbk7_Ewmax_6_comb',data=['rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_6','fbk7_Ewmax_6']
 
-store_data,'fbk7_Bwmax_3',(tmin+tmax)/2.,fbk7_Bwmax_3/1000.
-store_data,'fbk7_Bwmax_4',(tmin+tmax)/2.,fbk7_Bwmax_4/1000.
-store_data,'fbk7_Bwmax_5',(tmin+tmax)/2.,fbk7_Bwmax_5/1000.
-store_data,'fbk7_Bwmax_6',(tmin+tmax)/2.,fbk7_Bwmax_6/1000.
-store_data,'fbk7_Bwmax_3_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_3','fbk7_Bwmax_3']
-store_data,'fbk7_Bwmax_4_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_4','fbk7_Bwmax_4']
-store_data,'fbk7_Bwmax_5_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_5','fbk7_Bwmax_5']
-store_data,'fbk7_Bwmax_6_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_6','fbk7_Bwmax_6']
-
-
-tplot,['fbk7_Ewmax_4_comb','fbk7_Ewmax_5_comb','fbk7_Ewmax_6_comb',$
-		'fbk7_Bwmax_4_comb','fbk7_Bwmax_5_comb','fbk7_Bwmax_6_comb']
-
-stop
+			store_data,'fbk7_Bwmax_3',(tmin+tmax)/2.,fbk7_Bwmax_3/1000.
+			store_data,'fbk7_Bwmax_4',(tmin+tmax)/2.,fbk7_Bwmax_4/1000.
+			store_data,'fbk7_Bwmax_5',(tmin+tmax)/2.,fbk7_Bwmax_5/1000.
+			store_data,'fbk7_Bwmax_6',(tmin+tmax)/2.,fbk7_Bwmax_6/1000.
+			store_data,'fbk7_Bwmax_3_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_3','fbk7_Bwmax_3']
+			store_data,'fbk7_Bwmax_4_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_4','fbk7_Bwmax_4']
+			store_data,'fbk7_Bwmax_5_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_5','fbk7_Bwmax_5']
+			store_data,'fbk7_Bwmax_6_comb',data=['rbsp'+probe+'_efw_fbk7_scmw_pk_6','fbk7_Bwmax_6']
 
 
+			tplot,['fbk7_Ewmax_4_comb','fbk7_Ewmax_5_comb','fbk7_Ewmax_6_comb',$
+					'fbk7_Bwmax_4_comb','fbk7_Bwmax_5_comb','fbk7_Bwmax_6_comb']
+
+		endif
 
 
 
@@ -944,82 +961,11 @@ stop
 ;****************************************************************
 ;****************************************************************
 
-
-
-
-
-
-
-
+		;Remove absurd separation values 
+		goo = where(sepmin gt 10.) & if goo[0] ne -1 then sepmin[goo] = !values.f_nan
+		goo = where(sepmax gt 10.) & if goo[0] ne -1 then sepmax[goo] = !values.f_nan
 
 		sc = strmid(fb,2,1)
-
-;		get_data,'ldiff',data=dd
-;		store_data,'poneline',dd.x,replicate(1.,n_elements(dd.x))
-;		store_data,'moneline',dd.x,replicate(-1.,n_elements(dd.x))
-;		store_data,'l_mlt_diffcomb',data=['ldiff','mltdiff','poneline','moneline']
-;		options,'ldiff','colors',250
-;		ylim,'l_mlt_diffcomb',-2,2
-;		ylim,'fu4_fb_mlt_from_hiresfile',0,24
-;		ylim,'rbsp'+probe+'_efw_spec64_scmw_comb',30,10000,1
-;		options,'fce_eq_2','linestyle',2
-;		options,'fce_eq_2','thick',2 & options,'fce_eq','thick',2 & options,'fce_eq_10','thick',2  
-;		options,'fce_eq_2','color',1 & options,'fce_eq','color',1 & options,'fce_eq_10','color',1  
-;		options,strlowcase(rb)+'_state_lshell_interp','ytitle',rb+'!CL'
-;		options,strlowcase(rb)+'_state_mlt_interp','ytitle',rb+'!CMLT'
-;		options,'MLT','ytitle',fb+'!CMLT'
-;		options,'McIlwainL','ytitle',fb+'!CL'
-
-;		options,'mltcomb','ytitle',fb+' MLT!C'+rb+'!CMLT'
-;		options,'lcomb','ytitle',fb+' L!C'+rb+'!CL'
-
-;		tplot_options,'xmargin',[20.,15.]
-;		tplot_options,'ymargin',[3,6]
-;		tplot_options,'xticklen',0.08
-;		tplot_options,'yticklen',0.02
-;		tplot_options,'xthick',2
-;		tplot_options,'ythick',2
-;		tplot_options,'labflag',-1	
-		
-;		copy_data,strlowcase(fb)+'_fb_col_hires_flux_detrend',strlowcase(fb)+'_fb_col_hires_flux_detrend_v2'
-;		ylim,strlowcase(fb)+'_fb_col_hires_flux_detrend_v2',-10,10
-;		options,strlowcase(fb)+'_fb_col_hires_flux_detrend_v2','ytitle','FB col!Cdetrendflux!Cexpanded!Cyscale'
-;		options,strlowcase(fb)+'_fb_col_hires_flux_detrend','ytitle','FB col!Cdetrendflux'
-;		options,'fb_col_flux_tc_detrend_gapsremoved','ytitle','FB col!Cdetrendflux!Cgaps!Cremoved'
-;		options,'l_mlt_diffcomb','ytitle','dL(red)!CdMLT!C(RB-FB)'
-
-		;Look at overview plot for the ENTIRE time hires data is available. Compare this to the time when 
-		;the conjunction is within dL and dMLT <= +/- 1
-
-;		timeS = strmid(tstart,0,4)+strmid(tstart,5,2)+strmid(tstart,8,2)+'_'+strmid(tstart,11,2)+strmid(tstart,14,2)+strmid(tstart,17,2)
-;
-;		if not noplot then begin 
-;			popen,'~/Desktop/'+'RBSP'+probe+'_'+fb + '_'+timeS+'_conjunction_hr.ps'
-;			timespan,t0[j]-60.,t1[j]-t0[j] + 120.,/sec
-;			tplot,['rbsp'+probe+'_efw_spec64_scmw_comb',$
-;				strlowcase(fb)+'_fb_col_hires_flux',$
-;				'comb',$
-;				'datagap_test',$
-;				strlowcase(fb)+'_fb_col_hires_flux_detrend_v2',$
-;				strlowcase(fb)+'_fb_col_hires_flux_detrend',$
-;				'fb_col_flux_tc_detrend_gapsremoved',$
-;				'mltcomb','lcomb','l_mlt_diffcomb']
-;			timebar,[t0[j],t1[j]]
-;
-;			stop
-;
-;			timespan,t0z2,t1z2-t0z2,/sec
-;			tplot,['rbsp'+probe+'_efw_spec64_scmw_comb',strlowcase(fb)+'_fb_col_hires_flux',$
-;			'mltcomb','lcomb','l_mlt_diffcomb']
-;			timebar,[t0[j],t1[j]]
-;			pclose
-;		endif
-
-;stop
-
-
-
-
 
 
 		print,currday
@@ -1032,8 +978,8 @@ stop
 
 
 
-	;If first time opening file, then print the header
-	;For detailed header info see RBSP_FU_conjunction_header.fmt
+		;If first time opening file, then print the header
+		;For detailed header info see RBSP_FU_conjunction_header.fmt
 		if not result then begin
 			openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values_'+tmpstr+'.txt',/get_lun
 						printf,lun,'Conjunction data for RBSP'+probe+' and '+fb + ' from Shumko file ' + fb+'_'+rb+'_conjunctions_dL10_dMLT10_hr_final.txt'
@@ -1048,6 +994,7 @@ stop
 			mltmin[qq], mltmax[qq], mltmed[qq], mltavg[qq], $
 			dlmin[qq], dlmax[qq], dlmed[qq], dlavg[qq], $
 			dmltmin[qq], dmltmax[qq], dmltmed[qq], dmltavg[qq], $
+			sepmin[qq], sepmax[qq], $
 			totalchorusspecL_E[qq],  totalchorusspecU_E[qq],  totalnonchorusspec_E[qq], $
 			maxchorusspecL_E[qq],  maxchorusspecU_E[qq],  maxnonchorusspec_E[qq], $
 			avgchorusspecL_E[qq],  avgchorusspecU_E[qq],  avgnonchorusspec_E[qq], $
