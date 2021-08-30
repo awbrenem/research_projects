@@ -225,17 +225,42 @@ if __name__ == "__main__":
         #Now add in the column flux to the surviving data in the dataframe 
         colS_arr = [colS] * len(tmp2)
         df1 = pd.DataFrame({"colS":colS_arr})
+        df2 = pd.DataFrame({"colHR":colS_arr})
         df1.reset_index(drop=True, inplace=True)
-        df = pd.concat([tmp2, df1], axis=1)
+        df2.reset_index(drop=True, inplace=True)
+        df = pd.concat([tmp2, df1, df2], axis=1)
 
         df_surviving_list.append(df)
 
 
 
 
-    #Now concatenate list of dataframes into single dataframe 
-    #THIS CONTAINS FINAL VALUES FOR A PARTICULAR DL AND DMLT RANGE THAT CAN BE PLOTTED!!!
+    #Now concatenate list of dataframes into single dataframe that contains all the surviving data for a particular dL and dMLT range
     df_fin = pd.concat(df_surviving_list)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
