@@ -58,7 +58,7 @@ pathoutput = homedir + 'Desktop/'
 
 
 testing = 0
-hires = 0   ;conjunctions w/ hires only?
+hires = 1   ;conjunctions w/ hires only?
 noplot = 1
 
 probe = 'b'
@@ -408,7 +408,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;+/-1 hr of conjunction
 		;-----------------------------------------------------------
 
-stop
+;stop
 		;First the Electric field
 		get_data,'rbsp'+probe+'_efw_spec64_e12ac',data=dd,dlim=dlim,lim=lim
 		spectmp = tsample('rbsp'+probe+'_efw_spec64_e12ac',[t0z,t1z],times=tt)
@@ -929,10 +929,6 @@ endif
 		tstvar = tnames('rbsp'+probe+'_efw_fbk13_e??dc_pk')
 		if tstvar ne '' then e1234 = strmid(tstvar,16,3)
 
-
-
-
-
 		;---------------------------------------------------------------
 		;Find max filterbank value in various bins for FBK7 mode
 
@@ -1031,14 +1027,19 @@ endif
 		print,'Ttime EFWb2 = ',nsec_b2
 		print,'----------------------'
 
-		result = FILE_TEST(pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt')
+
+		if hires then fnopen = 'RBSP'+probe+'_'+fb+'_conjunction_values_hr.txt' $
+		else fnopen = 'RBSP'+probe+'_'+fb+'_conjunction_values.txt'
+
+		result = FILE_TEST(pathoutput + fnopen)
 
 
 
 	;If first time opening file, then print the header
 	;For detailed header info see RBSP_FU_conjunction_header.fmt
+
 		if not result then begin
-			openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun
+			openw,lun,pathoutput + fnopen,/get_lun
 						printf,lun,'Conjunction data for RBSP'+probe+' and '+fb + ' from Shumko file ' + fb+'_'+rb+'_conjunctions_dL10_dMLT10_hr_final.txt'
 						close,lun
 						free_lun,lun
@@ -1132,7 +1133,7 @@ endif
 
 ;		if finite(min_sep) ne 0 then begin
 
-		openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values.txt',/get_lun,/append
+		openw,lun,pathoutput + fnopen,/get_lun,/append
 	;	printf,lun,tmidtmp+lshell_min+mlt_min+min_sep+min_dL+min_dMLT+max_flux_col+max_counts_sur+nsec_emf+nsec_b1+nsec_b2+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
 		printf,lun,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
 		mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_flux_col+max_HRflux_col+$
