@@ -6,15 +6,43 @@
 
 
 ;Things to add / Issues to address
-;--f/fce for wave statistics, not just f
 ;--E/B values 
 ;--Double counting issue can occur on days (e.g. 2016-01-21 when uB are observed on consecutive conjunctions that are only a couple of hours apart...i.e. 
 ;		closer than the entire timerange considered. )
-;--Use EMFISIS spectral data due to higher freq range (otherwise chorus gets cut off due to EFW 6.5 kHz limits)
 ;--Add a standard deviation measure to indicate how varied the amplitudes are? 
+
+
+
+;PROBLEM DAYS
+;j=28 --> no Lvals (Event does have microbursts)
+;min_sep_time = NaN
+
+
+;**conjunction times (t0, t1, tfb0, tfb1) - CORRECT
+;2017-12-07/01:55:42
+;2017-12-07/01:56:56
+
+;**INCORRECT
+;**rough conjunction times (t0z, t1z;  used to find tconj via min_sep_time)
+;2017-12-06/22:59:59
+;RBSP_EFW> time_string(t1z)
+;2017-12-07/00:59:59
+
+
+;tfb1 values are wrong!!!!!
+;--> they are initially correct around L112
+
+
+
+;t0 and t1 have different values than the time clipped data
 
 ;2016-01-20  (FCE VALUES MESSED UP)
 ;2016-08-14/01:27:13 (code crashing - LVALS array is NaN)
+
+
+
+
+
 
 ;Grab local path to save data
 homedir = (file_search('~',/expand_tilde))[0]+'/'
@@ -26,8 +54,8 @@ pathoutput = homedir + 'Desktop/'
 ;------------------------
 ;input vars
 hires = 1   ;conjunctions w/ hires only?
-probe = 'a'
-fb = 'FU3'
+probe = 'b'
+fb = 'FU4'
 dettime = 0.75 ;(sec)  Time for detrending the hires data in order to obtain microburst amplitudes. 
 				;See firebird_subtract_tumble_from_hiresdata_testing.pro
 minlowf = 60. ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
@@ -45,10 +73,6 @@ path = homedir + 'Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Fireb
 
 remove_lbchorus_when_concurrent_lowf = 0.
 ;------------------------
-
-
-
-
 
 
 nchunks = 2*time_extent/tdelta + 1.
@@ -81,13 +105,14 @@ mbtimes = mb_list.time
 ;****************************
 ;TEMPORARY - ONLY ANALYZE CONJUNCTIONS THAT HAVE IDENTIFIED MICROBURSTS
 
+
 tfb0fin = tfb0 
 
 
+;Make sure there is microburst at/near conjunction
 for i=0,n_elements(tfb0)-1 do begin $  
 	deltattmp = abs(time_double(tfb0[i]) - time_double(mbtimes)) & $
-	if min(deltattmp) gt 3600. then tfb0fin[i] = !values.f_nan
-
+	if min(deltattmp) gt 5*60. then tfb0fin[i] = !values.f_nan
 endfor
 
 goo = where(finite(tfb0fin))
@@ -96,7 +121,13 @@ tfb0 = tfb0[goo]
 tfb1 = tfb1[goo]
 t0 = t0[goo] 
 t1 = t1[goo]
+vals = vals[goo,*]
+meanL = meanL[goo]
+meanMLT = meanMLT[goo] 
+mindist = mindist[goo]
+strv = strv[goo]
 
+;stop
 ;**************************
 ;**************************
 
@@ -304,6 +335,46 @@ for j=0.,n_elements(tfb0)-1 do begin
 	endif  ;load new data
 
 
+
+
+
+
+;---------------------------------------------------------
+;Calculate E/B ratio
+;---------------------------------------------------------
+
+	;Calculate E/B ratio (E=VxB, where E(mV/m) = V(km/s) x B(nT)/1000)
+	; V = 1000* (E/B)    km/s
+	; n = B*c/E = c/vp
+	
+	
+	
+	get_data,'EuEu',data=Evals,dlimits=dlim,limits=lim
+	get_data,'BwBw',data=Bvals
+	
+
+	E2B = 1000.*Evals.y/Bvals.y    ;Velocity=1000*E/B (km/s)
+	boo = where(finite(E2B) eq 0)
+	if boo[0] ne -1 then E2B[boo] = 0.
+	
+	store_data,'E2B',data={x:Evals.x,y:E2B,v:Evals.v},dlimits=dlim,limits=lim
+	store_data,'E2B_C',data=['E2B','fce_eq','fce_eq_2','fce_eq_10','flh_eq']
+	
+	ylim,'E2B_C',3,10000,1
+	zlim,'E2B_C',1d3,1d8,1
+	options,'E2B_C','ztitle','km/s'
+	options,'E2B_C','ytitle','1000*Eu/Bw!C[Hz]'
+	options,'E2B_C','ysubtitle',''
+	
+
+
+
+
+
+
+
+
+
 	;-------------------------------
 	;If we have all the data we need then continue 
 	;-------------------------------
@@ -315,6 +386,9 @@ for j=0.,n_elements(tfb0)-1 do begin
 		ndays = ntimes/86400.
 		times_artificial = time_double(trange[0]) + dindgen(ndays*ntimes)
 		vals = fltarr(n_elements(times_artificial))
+
+;****NDAYS MAY BE INCORRECT 
+STOP
 
 
 		goo = where((times_artificial ge tfb0[j]) and (times_artificial le tfb1[j]))
@@ -351,22 +425,15 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;--------------------------
 
 
-;		store_data,'lcomb',data=['rbsp'+probe+'_state_lshell','McIlwainL']
-;		store_data,'mltcomb',data=['rbsp'+probe+'_state_mlt','MLT']
-
-;		options,'lcomb','colors',[0,250]
-;		options,'mltcomb','colors',[0,250]
-;		ylim,'lcomb',0,10
-;		ylim,'mltcomb',0,24
 
 		options,['MLT','McIlwainL',strlowcase(rb)+'_state_lshell_interp','MLT',strlowcase(rb)+'_state_mlt_interp'],'psym',-2
 
 
-		;Set tlimits for conjunction
+		;Set tlimits for conjunction (used only for determining closest approach)
 		get_data,'fb_conjunction_times',ttmp,dtmp
 		goo = where(dtmp eq 1)
 		tmid = (ttmp[goo[0]] + ttmp[goo[n_elements(goo)-1]])/2.
-		t0z = tmid - 3600.   ;used only for determining closest approach
+		t0z = tmid - 3600.  
 		t1z = tmid + 3600.
 
 
@@ -402,12 +469,13 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		;Find absolute value of sc separation. We'll use the min value of this to define
 		;dLmin and dMLTmin
-		sc_absolute_separation,'rbsp'+probe+'_state_lshell_interp_tc','fb_mcilwainL_tc',$
-			'rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc';,/km
+		sc_absolute_separation,'rbsp'+probe+'_state_lshell_interp_tc','fb_mcilwainL_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc'
 
 
 		ylim,'separation_absolute',-20,20
 		options,['separation_absolute','ldiff_tc','mltdiff_tc','rbsp'+probe+'_state_lshell_interp_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc'],'psym',-2
+		timespan,datestart,ndays_load,/days
+		tplot,['separation_absolute','ldiff_tc','mltdiff_tc','rbsp'+probe+'_state_lshell_interp_tc','rbsp'+probe+'_state_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc']
 
 
 		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
@@ -468,8 +536,10 @@ for j=0.,n_elements(tfb0)-1 do begin
 		filenamestr = strmid(tmpp,0,4)+strmid(tmpp,5,2)+strmid(tmpp,8,2)+'_'+strmid(tmpp,11,2)+strmid(tmpp,14,2)+strmid(tmpp,17,2)
 
 
-
+		;-----------------------------------------------------
 		;Create final data arrays
+		;-----------------------------------------------------
+
 		d = fltarr(nchunks-1)
 		totalchorusspecL_E = d & totalchorusspecU_E = d & totalnonchorusspec_E = d
 		maxchorusspecL_E = d & maxchorusspecU_E = d & maxnonchorusspec_E = d
@@ -494,8 +564,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		freqpeakL_E = d & freqpeakU_E = d & freqpeakO_E = d
 		freqpeakL_B = d & freqpeakU_B = d & freqpeakO_B = d
-		f_fcepeakL_E = d & f_fcepeakU_E = d & f_fcepeakO_E = d
-		f_fcepeakL_B = d & f_fcepeakU_B = d & f_fcepeakO_B = d
+		fcemin = d & fcemax = d
 
 		tmin = d & tmax = d
 
@@ -633,6 +702,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 			spectmpU = tsample('tmpU',[tmin[ii],tmax[ii]])
 			spectmpO = tsample('tmpO',[tmin[ii],tmax[ii]])
 
+			fcemin[ii] = min(fcetmp,/nan) & fcemax[ii] = max(fcetmp,/nan)
 
 			if finite(fcetmp[0]) then begin
 
@@ -770,7 +840,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 		options,'loccomb?','panel_size',0.6
 ;		popen,'~/Desktop/'+filenamestr+'_RBSP'+probe+'_e12dc_wavepower'+'.ps'
 		!p.charsize = 0.6
-		tplot,['EuEu_comb',$
+		tplot,['E2B_C','EuEu_comb',$
 		;'rbsp'+probe+'_efw_spec64_e12ac_comb',$
 		'specUcomb','loccombU',$
 		'specLcomb','loccombL',$
@@ -976,7 +1046,7 @@ stop
 		options,'loccomb?','panel_size',0.6
 ;		popen,'~/Desktop/'+filenamestr+'_RBSP'+probe+'_scmw_wavepower'+'.ps'
 		!p.charsize = 0.6
-		tplot,['BwBw_comb',$
+		tplot,['E2B_C','BwBw_comb',$
 ;		'rbsp'+probe+'_efw_spec64_scmw_comb',$
 		'specUcomb','loccombU',$
 		'specLcomb','loccombL',$
@@ -1132,14 +1202,29 @@ stop
 
 
 		;---------------------------------------------------
-		;Normalize the frequencies 
+		;Normalize the frequencies to the min/max values of the entire range of fce's seen during each chunk. 
+		;Note that this can result in some, for example, lower band waves being outside of the lower band range. 
+		;This happens most often fce is changing fairly rapidly and the time chunk is large (e.g. 10 min)
 		;---------------------------------------------------
 
 
-		f_fcepeakL_B = freqpeakL_B/fce
+		fceavg = (fcemin + fcemax)/2.
+		f_fcemin_peakL_B = freqpeakL_B/fcemax
+		f_fcemax_peakL_B = freqpeakL_B/fcemin
+		f_fcemin_peakL_E = freqpeakL_E/fcemax
+		f_fcemax_peakL_E = freqpeakL_E/fcemin
 
-stop
+		f_fcemin_peakU_B = freqpeakU_B/fcemax
+		f_fcemax_peakU_B = freqpeakU_B/fcemin
+		f_fcemin_peakU_E = freqpeakU_E/fcemax
+		f_fcemax_peakU_E = freqpeakU_E/fcemin
 
+		f_fcemin_peakO_B = freqpeakO_B/fcemax
+		f_fcemax_peakO_B = freqpeakO_B/fcemin
+		f_fcemin_peakO_E = freqpeakO_E/fcemax
+		f_fcemax_peakO_E = freqpeakO_E/fcemin
+
+;stop
 
 		;---------------------------------------------------
 		;Output results to file
@@ -1151,43 +1236,46 @@ stop
 		result = FILE_TEST(pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values_'+filenamestr+'.txt')
 
 
+		;format statement for final output
+		fmt = '(a16,2x,a16,2x,20(f7.2,2x),24(e14.4,2x),22(f10.2,2x),6(f8.0,2x),12(f12.8,2x))'
+
 
 		openw,lun,pathoutput + 'RBSP'+probe+'_'+fb+'_conjunction_values_'+filenamestr+'.txt',/get_lun
 		for qq=0,n_elements(tmin)-1 do begin
 			printf,lun,time_string(tmin[qq])+' ',time_string(tmax[qq]), $
-			lmin[qq], lmax[qq], lmed[qq], lavg[qq], $
-			mltmin[qq], mltmax[qq], mltmed[qq], mltavg[qq], $
-			dlmin[qq], dlmax[qq], dlmed[qq], dlavg[qq], $
-			dmltmin[qq], dmltmax[qq], dmltmed[qq], dmltavg[qq], $
+			Lref, MLTref, $
+			lmin[qq], lmax[qq], lavg[qq], lmed[qq], $
+			mltmin[qq], mltmax[qq], mltavg[qq], mltmed[qq], $
+			dlmin[qq], dlmax[qq], dlavg[qq], dlmed[qq], $
+			dmltmin[qq], dmltmax[qq], dmltavg[qq], dmltmed[qq], $
 			sepmin[qq], sepmax[qq], $
-			totalchorusspecL_E[qq],  totalchorusspecU_E[qq],  totalnonchorusspec_E[qq], $
-			maxchorusspecL_E[qq],  maxchorusspecU_E[qq],  maxnonchorusspec_E[qq], $
-			avgchorusspecL_E[qq],  avgchorusspecU_E[qq],  avgnonchorusspec_E[qq], $
-			medianchorusspecL_E[qq],  medianchorusspecU_E[qq],  mediannonchorusspec_E[qq], $
-			totalchorusspecL_B[qq],  totalchorusspecU_B[qq],  totalnonchorusspec_B[qq], $
-			maxchorusspecL_B[qq],  maxchorusspecU_B[qq],  maxnonchorusspec_B[qq], $
-			avgchorusspecL_B[qq],  avgchorusspecU_B[qq],  avgnonchorusspec_B[qq], $
-			medianchorusspecL_B[qq],  medianchorusspecU_B[qq],  mediannonchorusspec_B[qq], $
-			fbk7_Ewmax_3[qq],  fbk7_Ewmax_4[qq],  fbk7_Ewmax_5[qq],  fbk7_Ewmax_6[qq], $
-			fbk7_Bwmax_3[qq],  fbk7_Bwmax_4[qq],  fbk7_Bwmax_5[qq],  fbk7_Bwmax_6[qq], $
-			fbk13_Ewmax_6[qq],  fbk13_Ewmax_7[qq],  fbk13_Ewmax_8[qq],  fbk13_Ewmax_9[qq],  fbk13_Ewmax_10[qq],  fbk13_Ewmax_11[qq],  fbk13_Ewmax_12[qq], $
-			fbk13_Bwmax_6[qq],  fbk13_Bwmax_7[qq],  fbk13_Bwmax_8[qq],  fbk13_Bwmax_9[qq],  fbk13_Bwmax_10[qq],  fbk13_Bwmax_11[qq],  fbk13_Bwmax_12[qq], $
-			freqpeakL_E[qq],  freqpeakU_E[qq],  freqpeakO_E[qq], $
-			freqpeakL_B[qq],  freqpeakU_B[qq],  freqpeakO_B[qq]
+			totalnonchorusspec_E[qq], maxnonchorusspec_E[qq], avgnonchorusspec_E[qq], mediannonchorusspec_E[qq], $
+			totalchorusspecL_E[qq], maxchorusspecL_E[qq], avgchorusspecL_E[qq], medianchorusspecL_E[qq], $
+			totalchorusspecU_E[qq], maxchorusspecU_E[qq], avgchorusspecU_E[qq], medianchorusspecU_E[qq], $
+			totalnonchorusspec_B[qq], maxnonchorusspec_B[qq], avgnonchorusspec_B[qq], mediannonchorusspec_B[qq], $
+			totalchorusspecL_B[qq], maxchorusspecL_B[qq], avgchorusspecL_B[qq], medianchorusspecL_B[qq], $
+			totalchorusspecU_B[qq], maxchorusspecU_B[qq], avgchorusspecU_B[qq], medianchorusspecU_B[qq], $
+			fbk7_Ewmax_3[qq], fbk7_Ewmax_4[qq], fbk7_Ewmax_5[qq], fbk7_Ewmax_6[qq], $
+			fbk7_Bwmax_3[qq], fbk7_Bwmax_4[qq], fbk7_Bwmax_5[qq], fbk7_Bwmax_6[qq], $
+			fbk13_Ewmax_6[qq], fbk13_Ewmax_7[qq], fbk13_Ewmax_8[qq], fbk13_Ewmax_9[qq], fbk13_Ewmax_10[qq], fbk13_Ewmax_11[qq], fbk13_Ewmax_12[qq], $
+			fbk13_Bwmax_6[qq], fbk13_Bwmax_7[qq], fbk13_Bwmax_8[qq], fbk13_Bwmax_9[qq], fbk13_Bwmax_10[qq], fbk13_Bwmax_11[qq], fbk13_Bwmax_12[qq], $
+			freqpeakO_E[qq], freqpeakL_E[qq], freqpeakU_E[qq], $
+			freqpeakO_B[qq], freqpeakL_B[qq], freqpeakU_B[qq], $
+			f_fcemin_peakO_E[qq], f_fcemax_peakO_E[qq], $
+			f_fcemin_peakL_E[qq], f_fcemax_peakL_E[qq], $
+			f_fcemin_peakU_E[qq], f_fcemax_peakU_E[qq], $
+			f_fcemin_peakO_B[qq], f_fcemax_peakO_B[qq], $
+			f_fcemin_peakL_B[qq], f_fcemax_peakL_B[qq], $
+			f_fcemin_peakU_B[qq], f_fcemax_peakU_B[qq], format=fmt
+
+
 		endfor 
 
 		close,lun
 		free_lun,lun
 
 
-
-
-
-
-
-
-
-
+stop
 
 	endif  ;for no missing data
 endfor
