@@ -35,28 +35,8 @@
 
 
 ;**************
-;j=32
+;j=2914
 
-
-
-
-;*********PROBLEM:
-;J=253
-;% RBSP_LOAD_EMFISIS: Loading default 4sec L3 data...
-;SPD_DOWNLOAD_FILE(226): Downloading: https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
-;SPD_DOWNLOAD_FILE(280):   0 bytes complete   (0.0 KB/s)
-;% Compiled module: SPD_NETURL_ERROR2MSG.
-;SPD_DOWNLOAD_FILE(313): Unable to download file:  https://emfisis.physics.uiowa.edu/Flight/RBSP-B/L3/2015/05/23/
-;SPD_DOWNLOAD_FILE(313): HTTPS Error: Failed to connect to host or proxy.
-;SPD_DOWNLOAD(238): No matching remote files found. Searching for local files.
-;CDF_LOAD_VARS(164): File not found: "/Users/aaronbreneman/data/rbsp/emfisis/Flight/RBSP-B/L3/2015/05/23/rbsp-b_magnetometer_4sec-gsm_emfisis-L3_20150523_*.cdf"
-;CDF_INFO_TO_TPLOT(30): Must provide a CDF structure
-;RBSP_LOAD_EMFISIS(306): No EMFISIS MAG SEN data loaded... Probe: b
-;STORE_DATA(271): Creating tplot variable: 37 fb_conjunction_times
-;TINTERPOL_MXN(334): uz_tvar must be set for tinterpol_mxn to work
-;% Illegal variable attribute: Y.
-;% Execution halted at: $MAIN$            273 /Users/aaronbreneman/Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/master_conjunction_list_p
-;  art3.pro
 
 
 ;Grab local path to save data
@@ -67,7 +47,7 @@ pathoutput = homedir + 'Desktop/'
 
 
 testing = 0
-hires = 0   ;conjunctions w/ hires only?
+hires = 1   ;conjunctions w/ hires only?
 noplot = 1
 
 probe = 'b'
@@ -80,7 +60,7 @@ if hires then suffix = '_conjunctions_hr.sav' else suffix = '_conjunctions.sav'
 
 ;--------------
 ;Conjunction data for all the FIREBIRD passes with HiRes data
-path = homedir + 'Desktop/code/Aaron/github.umn.edu/research_projects/RBSP_Firebird_microburst_conjunctions_all/'
+path = homedir + 'Desktop/code/Aaron/github/research_projects/RBSP_Firebird_microburst_conjunctions_all/'
 
 ;pathoutput = '/'+strvals[0]+'/'+strvals[1]+'/Desktop/'
 
@@ -412,10 +392,12 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
+
 		;-----------------------------------------------------------
 		;Find the average spectral power in chorus freq range within
 		;+/-1 hr of conjunction
 		;-----------------------------------------------------------
+
 
 
 		;First the Electric field
@@ -670,12 +652,18 @@ for j=0.,n_elements(tfb0)-1 do begin
 		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
 		get_data,'separation_absolute',tt,dat
 
-;stop
+
 		whsep = -1
 		min_sep = !values.f_nan
 		min_sep_time = !values.f_nan
 		min_dmlt = !values.f_nan
 		min_dL = !values.f_nan
+
+
+
+
+
+
 
 
 	  ;select conjunction times only. NOTE: there are some conjunctions with
@@ -849,7 +837,8 @@ store_data,'comb',data=['fb_col_flux_tc','fb_col_flux_tc_smoothed']
 options,'comb','colors',[0,250]
 options,'comb','ytitle','Hires flux!Cvs smoothed'
 
-get_data,'ldiff',dd.x,dd.y
+;get_data,'ldiff',dd.x,dd.y
+get_data,'ldiff',data=dd
 store_data,'poneline',dd.x,replicate(1.,n_elements(dd.x))
 store_data,'moneline',dd.x,replicate(-1.,n_elements(dd.x))
 store_data,'l_mlt_diffcomb',data=['ldiff','mltdiff','poneline','moneline']
@@ -932,6 +921,7 @@ endif
 	;	tplot,[strlowcase(fb)+'_fb_col_hires_flux','fb_col_flux_tc','fb_col_flux_tc_detrend']
 		
 		;Figure out if we're dealing with e12 or e34 for FBK data 
+    e1234 = ''
 		tstvar = tnames('rbsp'+probe+'_efw_fbk7_e??dc_pk')
 		if tstvar ne '' then e1234 = strmid(tstvar,15,3)		
 		tstvar = tnames('rbsp'+probe+'_efw_fbk13_e??dc_pk')
@@ -939,6 +929,7 @@ endif
 
 
 		;---------------------------------------------------------------
+
 		;Find max filterbank value in various bins for FBK7 mode
 		get_data,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',data=dat
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc'
@@ -949,7 +940,6 @@ endif
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk13_'+e1234+'dc_pk_tc'
 		get_data,'rbsp'+probe+'_efw_fbk13_scmw_pk',data=dat
 		if is_struct(dat) then time_clip,'rbsp'+probe+'_efw_fbk13_scmw_pk',t0z,t1z,newname='rbsp'+probe+'_efw_fbk13_scmw_pk_tc'
-
 
 		get_data,'rbsp'+probe+'_efw_fbk7_'+e1234+'dc_pk_tc',data=dat
 		if is_struct(dat) then begin
