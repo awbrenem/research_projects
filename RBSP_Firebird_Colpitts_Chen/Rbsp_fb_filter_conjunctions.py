@@ -67,12 +67,10 @@ def read_conjunction_file(path,fn):
     header = parse_header(path + "RBSP_FU_conjunction_header.fmt")
 
 
-    file_name = path + "RBSPa_FU3_conjunction_values_hr.txt"
+    #file_name = path + "RBSPa_FU3_conjunction_values_hr.txt"
     file_name = path + fn
     df = pd.read_csv(file_name, header=None, skiprows=2, delim_whitespace=True, names=header, 
                     na_values=[99999.9, 9999.99, 999.99])
-
-
 
 
     # Create new variables that are the max FB flux and the max RB amplitude observed on the filter bank
@@ -98,6 +96,7 @@ def read_conjunction_file(path,fn):
 
     #axis=1 is column
     dftmp = pd.concat([df,df1,df2,df3], axis=1)
+
 
 
 
