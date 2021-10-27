@@ -119,7 +119,8 @@ def read_conjunction_file_extended(path,fn):
 
 
 
-# Reads in the (non-extended) conjunction files and returns a dictionary with all the values
+# Reads in the (non-extended) conjunction files and returns a Pandas data frame with all the values
+# These files have the FIREBIRD flux values that are not in the extended files
 def read_conjunction_file(path,fn):
 
     header = parse_header(path + "RBSP_FU_conjunction_header.fmt")
@@ -132,7 +133,6 @@ def read_conjunction_file(path,fn):
 
 
     return df
-
 
 
 
@@ -153,6 +153,48 @@ def filter_based_on_range(df, quantity, minv, maxv, *use_abs):
     return df_filtered
 
 
+# Add in the FIREBIRD flux to every entry in the list of extended Pandas dataframes
+def add_fb_flux_to_extended_df_list(list_of_df_ext, df):
+
+    #colHR_fin = []  #for testing
+
+
+    #For each dataframe in our list (which has extended values for a particular conjunction)
+    for j in range(len(list_of_df_ext)):
+
+        df_ext = list_of_df_ext[j]
+
+        #Grab only 0th element for this dataframe. The others have identical Tconj and Tmin values
+        conjtime = df_ext["Tconj"][0]   
+        conjtmp = [] 
+        for b in df["Tmin"]:
+            conjtmp.append(b[0:16])
+
+        #Find which elements in extended dataframe correspond to jth conjunction 
+        conjindex = np.where(np.array(conjtmp) == conjtime)
+        colS = float(df["colS"][conjindex[0]])
+        colHR = float(df["colHR"][conjindex[0]])
+
+        #colHR_fin.append(colHR)
+
+
+
+        #Now add in the column flux to the surviving data in the dataframe 
+        colS_arr = [colS] * len(df_ext)
+        colHR_arr = [colHR] * len(df_ext)
+        df1 = pd.DataFrame({"colS":colS_arr})
+        df2 = pd.DataFrame({"colHR":colHR_arr})
+        df1.reset_index(drop=True, inplace=True)
+        df2.reset_index(drop=True, inplace=True)
+        #df_ext = pd.concat([df_ext, df1, df2], axis=1)
+
+        list_of_df_ext[j] = pd.concat([df_ext, df1, df2], axis=1)
+        #df_surviving_list_b4.append(df_ext)
+
+    return list_of_df_ext
+
+
+
 
 
 
@@ -161,9 +203,15 @@ if __name__ == "__main__":
 
     from matplotlib import pyplot as plt
 
-    path = "/Users/abrenema/Desktop/code/Aaron/github/research_projects/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/"
-    data_b4 = read_conjunction_file(path, "RBSPb_FU4_conjunction_values.txt")
 
+    #Read in the normal conjunction file
+    path = "/Users/abrenema/Desktop/code/Aaron/github/research_projects/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/"
+    df_b4 = read_conjunction_file(path, "RBSPb_FU4_conjunction_values.txt")
+
+
+
+
+    #Read in the extended conjunction file as a list of Pandas dataframes
     folder_ext = 'RBSPb_FU4_extended_conjunction_files'
     path_ext = "/Users/abrenema/Desktop/code/Aaron/github/research_projects/RBSP_Firebird_microburst_conjunctions_all/RBSP_FB_final_conjunction_lists/"+folder_ext+"/"
 
@@ -171,86 +219,57 @@ if __name__ == "__main__":
     #fn_ext = os.listdir(path_ext)
     fn_ext = [f for f in os.listdir(path_ext) if f[0:4] == "RBSP"]
 
-
-
-    #Load in each extended file as a list of Pandas dataframes
-    list_ext = read_conjunction_file_extended(path_ext, fn_ext)
-
-
-    #At this point we have a list of dataframes. Each dataframe contains the extended data for each conjunction.
+    list_of_df_b4_ext = read_conjunction_file_extended(path_ext, fn_ext)
 
 
 
 
 
 
+    #The extended dataframes don't have the FIREBIRD flux (they only have the RBSP data at various times away from the conjunction).
+    #Here we'll add in the FIREBIRD flux (from the normal conjunction files) to the list of extended dataframes
+    list_of_df_b4_ext_fb = add_fb_flux_to_extended_df_list(list_of_df_b4_ext, df_b4)
 
 
-    #Going forward, we'll take each dataframe and:
-        #1) grab the colS and hires flux for each conjunction from the usual conjunction_values.txt files. This is a single value for each dataframe.
-        #2) isolate out various data slices (e.g. 2<dL<3 and -1<dMLT<1 data) and add these to a plot vs the colS flux.
+    #TESTING....FB FLUX ADDED CORRECTLY TO NON-REDUCED DATAFRAME 
+    for i in range(len(list_of_df_b4_ext_fb)): print(fn_ext[i], list_of_df_b4_ext_fb[i]["colHR"][0])
 
 
-    #Add in FIREBIRD data (from original conjunction file) to extended dataframe
+
+    #lmn = 3.5
+    #lmx = 8
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 1]
+    dmltrange = [0, 1]
 
 
     ##list of dataframes that survive the filtering and have colS from the conjunction added in 
-    df_surviving_list = []
+    df_surviving_list_b4 = []
 
 
+    #For each dataframe in out list, filter the data based on desired L, MLT, dL, dMLT
+    for j in range(len(list_of_df_b4_ext_fb)):
 
-    #For each dataframe in our list:
-    for j in range(len(list_ext)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
 
-        df = list_ext[j]
-
-        #Grab only 0th element for this dataframe. The others are identical
-        conjtime = df["Tconj"][0]   
-        conjtmp = [] 
-        for b in data_b4["Tmin"]:
-            conjtmp.append(b[0:16])
-
-        conjindex = np.where(np.array(conjtmp) == conjtime)
-        colS = float(data_b4["colS"][conjindex[0]])
-        colHR = float(data_b4["colHR"][conjindex[0]])
+        #df = pd.concat([tmp, df1, df2], axis=1)
+        df_surviving_list_b4.append(tmp)
 
 
-        #isolate out slices of data 
-        lmn = 3.5
-        lmx = 8
-        mltmn = 0
-        mltmx = 12
+    #TESTING....FB FLUX ADDED CORRECTLY TO NON-REDUCED DATAFRAME 
+    #for i in range(len(df_surviving_list_b4)): print(fn_ext[i], df_surviving_list_b4[i]["colHR"][0])
 
-        tmp = df
-        tmp = filter_based_on_range(tmp, "Lref", lmn, lmx)
-        tmp = filter_based_on_range(tmp, "MLTref", mltmn, mltmx)
-
-        dlmn = 0.75
-        dlmx = 20
-        dmltmn = 0
-        dmltmx = 1
-
-        tmp = filter_based_on_range(tmp, "dLavg", dlmn, dlmx, 1)
-        tmp = filter_based_on_range(tmp, "dMLTavg", dmltmn, dmltmx, 1) #1=|abs|
-
-
-
-        #Now add in the column flux to the surviving data in the dataframe 
-        colS_arr = [colS] * len(tmp)
-        colHR_arr = [colHR] * len(tmp)
-        df1 = pd.DataFrame({"colS":colS_arr})
-        df2 = pd.DataFrame({"colHR":colHR_arr})
-        df1.reset_index(drop=True, inplace=True)
-        df2.reset_index(drop=True, inplace=True)
-        df = pd.concat([tmp, df1, df2], axis=1)
-
-        df_surviving_list.append(df)
-
+    #for i in range(len(df_surviving_list_b4)): print(fn_ext[i], list_of_df_b4_ext_fb[i]["colHR"][0], "---", df_surviving_list_b4[i]["Tstart"][0], df_surviving_list_b4[i]["colHR"][0])
 
 
 
     #Now concatenate list of dataframes into single dataframe that contains all the surviving data for a particular dL and dMLT range
-    df_fin = pd.concat(df_surviving_list)
+    df_fin = pd.concat(df_surviving_list_b4)
 
 
 
@@ -259,18 +278,7 @@ if __name__ == "__main__":
     ykey = "colHR"
     #ykey = "colS"
 
-    """
-    xvar = df_fin[xkey]
-    yvar = df_fin[ykey]
-    plt.scatter(df_fin[xkey], df_fin[ykey], color='black')
-    plt.xlabel(xkey)
-    plt.ylabel(ykey)
-    plt.yscale("log")
-    plt.xscale("log")
-    plt.ylim([1e0,4e1])
-    plt.xlim([1e-9,5e-5])
-    plt.show()
-    """
+
 
 
 
@@ -307,16 +315,20 @@ if __name__ == "__main__":
     #xmin = np.min(df_fin[xkey])
     xmin = 5e0
     #xmax = np.max(df_fin[xkey])
-    xmax = 2000
+    xmax = 1500
 
     #ymin = np.min(df_fin[ykey])
-    ymin = 1e0
+    ymin = 0.5e0
     #ymax = np.max(df_fin[ykey])
-    ymax = 4e1
+    ymax = 2.6e1
 
 
+
+ 
+
+    
     fig, ax = plt.subplots(2)
-    ax[0].set_title("L="+str(lmn)+"-"+str(lmx)+"  MLT="+str(mltmn)+"-"+str(mltmx)+"  dL="+str(dlmn)+"-"+str(dlmx)+"  dMLT="+str(dmltmn)+"-"+str(dmltmx))
+    ax[0].set_title(str(len(df_surviving_list_b4))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[0]))
     ax[0].scatter(df_fin[xkey], df_fin[ykey], color='lightgray')
     ax[0].set_xlabel(xkey)
     ax[0].set_ylabel(ykey)
@@ -335,9 +347,12 @@ if __name__ == "__main__":
     ax[1].set_ylim([ymin, ymax])
  
     #title_str = ykey+"-vs-"+xkey+"_L="+str(lmn)+"-"+str(lmx)+"_MLT="+str(mltmn)+"-"+str(mltmx)+"_dL="+str(dlmn)+"-"+str(dlmx)+"_dMLT="+str(dmltmn)+"-"+str(dmltmx)
-    title_str = ykey+"-vs-"+xkey+"[L="+str(lmn)+"-"+str(lmx)+"][MLT="+str(mltmn)+"-"+str(mltmx)+"][dL="+str(dlmn)+"-"+str(dlmx)+"][dMLT="+str(dmltmn)+"-"+str(dmltmx)+"]"
-    plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".png")
+    title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
+    #plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
     plt.show()
+
+
+
 
 
 
