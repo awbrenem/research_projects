@@ -197,6 +197,53 @@ def add_fb_flux_to_extended_df_list(list_of_df_ext, df):
 
 
 
+def get_kde_values(df_fin, xkey, ykey): 
+
+
+    #Take log of data so it's properly weighted on a linear scale
+    datx = np.log10(np.asarray(df_fin[xkey]))
+    daty = np.log10(np.asarray(df_fin[ykey]))
+
+    #Keep only non-NaN values
+    tstx = np.isfinite(datx)
+    tsty = np.isfinite(daty)
+    good = np.logical_and(tstx, tsty)
+
+    #Numpy version 
+    datx2np = datx[good]
+    daty2np = daty[good]
+    datnp = np.vstack([datx2np, daty2np])
+    k = kde.gaussian_kde(datnp)
+
+
+    xi, yi = np.mgrid[datx2np.min():datx2np.max():nbins*1j, daty2np.min():daty2np.max():nbins*1j]
+    #zi = np.log10(k(np.vstack([xi.flatten(), yi.flatten()])))
+    zi = k(np.vstack([xi.flatten(), yi.flatten()]))
+
+    #Turn grid points back into linear scale
+    xi2 = [10**x for x in xi]
+    yi2 = [10**x for x in yi]
+
+
+    return xi, yi, xi2, yi2, zi
+
+
+
+
+def add_subplot(df_surviving_list, lrange, mltrange, dlrange, dmltrange, xkey, ykey, ax_number):
+
+    #Now concatenate list of dataframes into single dataframe that contains all the surviving data for a particular dL and dMLT range
+    df_fin = pd.concat(df_surviving_list)
+    xi,yi,xi2,yi2,zi = get_kde_values(df_fin, xkey, ykey)
+    ax[ax_number].set_title(str(len(df_surviving_list))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1]))
+    ax[ax_number].pcolormesh(xi2, yi2, zi.reshape(xi.shape), shading='auto')
+    ax[ax_number].set_yscale("log")
+    ax[ax_number].set_xscale("log")
+    ax[ax_number].set_xlabel(xkey)
+    ax[ax_number].set_ylabel(ykey)
+    ax[ax_number].set_xlim([xmin, xmax])
+    ax[ax_number].set_ylim([ymin, ymax])
+
 
 
 if __name__ == "__main__":
@@ -232,101 +279,162 @@ if __name__ == "__main__":
 
 
     #TESTING....FB FLUX ADDED CORRECTLY TO NON-REDUCED DATAFRAME 
-    for i in range(len(list_of_df_b4_ext_fb)): print(fn_ext[i], list_of_df_b4_ext_fb[i]["colHR"][0])
+    #for i in range(len(list_of_df_b4_ext_fb)): print(fn_ext[i], list_of_df_b4_ext_fb[i]["colHR"][0])
 
 
 
-    #lmn = 3.5
-    #lmx = 8
-    lrange = [3.5, 8] 
-    mltrange = [0, 12]
-    dlrange = [0, 1]
-    dmltrange = [0, 1]
 
-
-    ##list of dataframes that survive the filtering and have colS from the conjunction added in 
-    df_surviving_list_b4 = []
-
-
-    #For each dataframe in out list, filter the data based on desired L, MLT, dL, dMLT
-    for j in range(len(list_of_df_b4_ext_fb)):
-
-        tmp = list_of_df_b4_ext_fb[j]
-        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
-        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
-        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
-        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
-
-        #df = pd.concat([tmp, df1, df2], axis=1)
-        df_surviving_list_b4.append(tmp)
-
-
-    #TESTING....FB FLUX ADDED CORRECTLY TO NON-REDUCED DATAFRAME 
-    #for i in range(len(df_surviving_list_b4)): print(fn_ext[i], df_surviving_list_b4[i]["colHR"][0])
-
-    #for i in range(len(df_surviving_list_b4)): print(fn_ext[i], list_of_df_b4_ext_fb[i]["colHR"][0], "---", df_surviving_list_b4[i]["Tstart"][0], df_surviving_list_b4[i]["colHR"][0])
-
-
-
-    #Now concatenate list of dataframes into single dataframe that contains all the surviving data for a particular dL and dMLT range
-    df_fin = pd.concat(df_surviving_list_b4)
-
-
-
+    #Select which quantities to plot....
     #xkey = "SpecBAvg_lb"
     xkey = "FBKmaxB"
     ykey = "colHR"
     #ykey = "colS"
 
 
-
-
-
-    #Plot density of points
-
-
-    #Take log of data so it's properly weighted on a linear scale
-    datx = np.log10(np.asarray(df_fin[xkey]))
-    daty = np.log10(np.asarray(df_fin[ykey]))
-
-    #Keep only non-NaN values
-    tstx = np.isfinite(datx)
-    tsty = np.isfinite(daty)
-    good = np.logical_and(tstx, tsty)
-
-
-    #Numpy version 
-    datx2np = datx[good]
-    daty2np = daty[good]
-    datnp = np.vstack([datx2np, daty2np])
-    k = kde.gaussian_kde(datnp)
-
-
-    nbins = 12.
-    xi, yi = np.mgrid[datx2np.min():datx2np.max():nbins*1j, daty2np.min():daty2np.max():nbins*1j]
-    #zi = np.log10(k(np.vstack([xi.flatten(), yi.flatten()])))
-    zi = k(np.vstack([xi.flatten(), yi.flatten()]))
-
-    #Turn grid points back into linear scale
-    xi2 = [10**x for x in xi]
-    yi2 = [10**x for x in yi]
-
     #Set axes ranges
     #xmin = np.min(df_fin[xkey])
     xmin = 5e0
     #xmax = np.max(df_fin[xkey])
     xmax = 1500
-
     #ymin = np.min(df_fin[ykey])
     ymin = 0.5e0
     #ymax = np.max(df_fin[ykey])
     ymax = 2.6e1
 
+    #number of bins for the KDE analysis
+    nbins = 12.
 
 
- 
 
-    
+    #KDE plot
+    fig, ax = plt.subplots(7)
+
+
+
+
+
+
+
+
+    #FILTER AND PLOT:  For each dataframe in out list, filter the data based on desired L, MLT, dL, dMLT
+
+    #Ranges to filter all the data (each dataframe in list) to 
+    lrange = [0, 200] 
+    mltrange = [0, 12]
+    dlrange = [0, 200]
+    dmltrange = [0, 24]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 0)
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [0, 0.5]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 1)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [0.5, 1]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 2)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [1, 1.5]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 3)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [1.5, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 4)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [2, 2.5]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 5)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 2]
+    dmltrange = [2.5, 3]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 6)
+
+
+
+
+    #title_str = ykey+"-vs-"+xkey+"_L="+str(lmn)+"-"+str(lmx)+"_MLT="+str(mltmn)+"-"+str(mltmx)+"_dL="+str(dlmn)+"-"+str(dlmx)+"_dMLT="+str(dmltmn)+"-"+str(dmltmx)
+    title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
+    plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
+    plt.show()
+
+
+
+
+
+    """
     fig, ax = plt.subplots(2)
     ax[0].set_title(str(len(df_surviving_list_b4))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[0]))
     ax[0].scatter(df_fin[xkey], df_fin[ykey], color='lightgray')
@@ -337,7 +445,7 @@ if __name__ == "__main__":
     ax[0].set_xlim([xmin, xmax])
     ax[0].set_ylim([ymin, ymax])
  
-    # Make the plot
+    # Make the KDE plot
     ax[1].pcolormesh(xi2, yi2, zi.reshape(xi.shape), shading='auto')
     ax[1].set_yscale("log")
     ax[1].set_xscale("log")
@@ -348,9 +456,9 @@ if __name__ == "__main__":
  
     #title_str = ykey+"-vs-"+xkey+"_L="+str(lmn)+"-"+str(lmx)+"_MLT="+str(mltmn)+"-"+str(mltmx)+"_dL="+str(dlmn)+"-"+str(dlmx)+"_dMLT="+str(dmltmn)+"-"+str(dmltmx)
     title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
-    #plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
+    plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
     plt.show()
-
+    """
 
 
 
