@@ -197,12 +197,13 @@ def add_fb_flux_to_extended_df_list(list_of_df_ext, df):
 
 
 
-def get_kde_values(df_fin, xkey, ykey): 
+def get_kde_values(df_fin, xkey, ykey, nbins): 
 
 
     #Take log of data so it's properly weighted on a linear scale
     datx = np.log10(np.asarray(df_fin[xkey]))
     daty = np.log10(np.asarray(df_fin[ykey]))
+
 
     #Keep only non-NaN values
     tstx = np.isfinite(datx)
@@ -232,19 +233,42 @@ def get_kde_values(df_fin, xkey, ykey):
 
 def add_subplot(df_surviving_list, lrange, mltrange, dlrange, dmltrange, xkey, ykey, ax_number):
 
+    #Set axes ranges
+    #xmin = np.min(df_fin[xkey])
+    xmin = 5e0
+    #xmax = np.max(df_fin[xkey])
+    xmax = 1500
+    #ymin = np.min(df_fin[ykey])
+    ymin = 0.5e0
+    #ymax = np.max(df_fin[ykey])
+    ymax = 2.6e1
+
+
     #Now concatenate list of dataframes into single dataframe that contains all the surviving data for a particular dL and dMLT range
     df_fin = pd.concat(df_surviving_list)
-    xi,yi,xi2,yi2,zi = get_kde_values(df_fin, xkey, ykey)
-    ax[ax_number].set_title(str(len(df_surviving_list))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1]))
-    ax[ax_number].pcolormesh(xi2, yi2, zi.reshape(xi.shape), shading='auto')
-    ax[ax_number].set_yscale("log")
-    ax[ax_number].set_xscale("log")
-    ax[ax_number].set_xlabel(xkey)
-    ax[ax_number].set_ylabel(ykey)
-    ax[ax_number].set_xlim([xmin, xmax])
-    ax[ax_number].set_ylim([ymin, ymax])
 
+    #Calculate the number of bins for the KDE gridding based on the range of datapoints available. 
+    #This is a better way than having a set gridsize which can lead to vastly different bin "fatness"
+    binsmax = np.nanmax(df_fin[xkey]) if np.nanmax(df_fin[xkey]) < xmax else xmax
+    binsmin = np.nanmin(df_fin[xkey]) if np.nanmin(df_fin[xkey]) > xmin else xmin
+    nbins = np.floor((np.log10(binsmax) - np.log10(binsmin)) * 10)
 
+    xi,yi,xi2,yi2,zi = get_kde_values(df_fin, xkey, ykey, nbins)
+    ax[ax_number[0],ax_number[1]].set_title(str(len(df_surviving_list))+" events; "+str(len(df_fin[xkey]))+" data points;  L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1]))
+    ax[ax_number[0],ax_number[1]].pcolormesh(xi2, yi2, zi.reshape(xi.shape), shading='auto')
+    ax[ax_number[0],ax_number[1]].set_yscale("log")
+    ax[ax_number[0],ax_number[1]].set_xscale("log")
+    ax[ax_number[0],ax_number[1]].set_xlabel(xkey)
+    ax[ax_number[0],ax_number[1]].set_ylabel(ykey)
+    ax[ax_number[0],ax_number[1]].set_xlim([xmin, xmax])
+    ax[ax_number[0],ax_number[1]].set_ylim([ymin, ymax])
+
+    print('-------')
+    print(np.log10(binsmin), np.log10(binsmax))
+    print(np.log10(binsmax) - np.log10(binsmin))
+
+    print(nbins)
+    print("Here)")
 
 if __name__ == "__main__":
 
@@ -291,38 +315,21 @@ if __name__ == "__main__":
     #ykey = "colS"
 
 
-    #Set axes ranges
-    #xmin = np.min(df_fin[xkey])
-    xmin = 5e0
-    #xmax = np.max(df_fin[xkey])
-    xmax = 1500
-    #ymin = np.min(df_fin[ykey])
-    ymin = 0.5e0
-    #ymax = np.max(df_fin[ykey])
-    ymax = 2.6e1
-
-    #number of bins for the KDE analysis
-    nbins = 12.
-
-
-
-    #KDE plot
-    fig, ax = plt.subplots(7)
-
-
-
-
-
-
-
 
     #FILTER AND PLOT:  For each dataframe in out list, filter the data based on desired L, MLT, dL, dMLT
+
+
+    """
+    #KDE plots
+    fig, ax = plt.subplots(2,2)
+
+
 
     #Ranges to filter all the data (each dataframe in list) to 
     lrange = [0, 200] 
     mltrange = [0, 12]
     dlrange = [0, 200]
-    dmltrange = [0, 24]
+    dmltrange = [0, 12]
     df_surviving_list_tmp = []
     for j in range(len(list_of_df_b4_ext_fb)):
         tmp = list_of_df_b4_ext_fb[j]
@@ -331,7 +338,33 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 0)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [0,0])
+
+    lrange = [0, 200] 
+    mltrange = [12, 24]
+    dlrange = [0, 200]
+    dmltrange = [0, 12]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [1,0])
+
+
+    title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
+    plt.savefig('/Users/abrenema/Desktop/'+ title_str + "_overview.ps")
+    plt.show()
+
+    """
+    
+    
+    fig, ax = plt.subplots(6,2)
+
+
 
     lrange = [3.5, 8] 
     mltrange = [0, 12]
@@ -345,7 +378,7 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 1)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [0,0])
 
 
     lrange = [3.5, 8] 
@@ -360,7 +393,7 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 2)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [1,0])
 
 
     lrange = [3.5, 8] 
@@ -375,7 +408,7 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 3)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [2,0])
 
 
     lrange = [3.5, 8] 
@@ -390,7 +423,7 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 4)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [3,0])
 
 
     lrange = [3.5, 8] 
@@ -405,7 +438,7 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 5)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [4,0])
 
 
     lrange = [3.5, 8] 
@@ -420,12 +453,103 @@ if __name__ == "__main__":
         tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
         tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
         df_surviving_list_tmp.append(tmp)
-    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, 6)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [5,0])
 
 
 
 
-    #title_str = ykey+"-vs-"+xkey+"_L="+str(lmn)+"-"+str(lmx)+"_MLT="+str(mltmn)+"-"+str(mltmx)+"_dL="+str(dlmn)+"-"+str(dlmx)+"_dMLT="+str(dmltmn)+"-"+str(dmltmx)
+
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0, 0.33]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [0,1])
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0.33, 0.66]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [1,1])
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [0.66, 1]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [2,1])
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [1, 1.33]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [3,1])
+
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [1.33, 100]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [4,1])
+
+
+
+    """
+    lrange = [3.5, 8] 
+    mltrange = [0, 12]
+    dlrange = [1.66, 2]
+    dmltrange = [0, 2]
+    df_surviving_list_tmp = []
+    for j in range(len(list_of_df_b4_ext_fb)):
+        tmp = list_of_df_b4_ext_fb[j]
+        tmp = filter_based_on_range(tmp, "Lref", lrange[0], lrange[1])
+        tmp = filter_based_on_range(tmp, "MLTref", mltrange[0], mltrange[1])
+        tmp = filter_based_on_range(tmp, "dLavg", dlrange[0], dlrange[1], 1)
+        tmp = filter_based_on_range(tmp, "dMLTavg", dmltrange[0], dmltrange[1], 1) #1=|abs|
+        df_surviving_list_tmp.append(tmp)
+    add_subplot(df_surviving_list_tmp, lrange, mltrange, dlrange, dmltrange, xkey, ykey, [5,1])
+    """
+
+
+
     title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
     plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
     plt.show()
@@ -433,11 +557,10 @@ if __name__ == "__main__":
 
 
 
-
     """
     fig, ax = plt.subplots(2)
-    ax[0].set_title(str(len(df_surviving_list_b4))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[0]))
-    ax[0].scatter(df_fin[xkey], df_fin[ykey], color='lightgray')
+    ax[0].set_title(str(len(df_surviving_list_tmp))+" events: L="+str(lrange[0])+"-"+str(lrange[1])+"  MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"  dL="+str(dlrange[0])+"-"+str(dlrange[1])+"  dMLT="+str(dmltrange[0])+"-"+str(dmltrange[0]))
+    ax[0].scatter(df_surviving_list_tmp[xkey], df_surviving_list_tmp[ykey], color='lightgray')
     ax[0].set_xlabel(xkey)
     ax[0].set_ylabel(ykey)
     ax[0].set_yscale("log")
@@ -453,12 +576,12 @@ if __name__ == "__main__":
     ax[1].set_ylabel(ykey)
     ax[1].set_xlim([xmin, xmax])
     ax[1].set_ylim([ymin, ymax])
- 
+    """ 
+    
     #title_str = ykey+"-vs-"+xkey+"_L="+str(lmn)+"-"+str(lmx)+"_MLT="+str(mltmn)+"-"+str(mltmx)+"_dL="+str(dlmn)+"-"+str(dlmx)+"_dMLT="+str(dmltmn)+"-"+str(dmltmx)
     title_str = ykey+"-vs-"+xkey+"[L="+str(lrange[0])+"-"+str(lrange[1])+"][MLT="+str(mltrange[0])+"-"+str(mltrange[1])+"][dL="+str(dlrange[0])+"-"+str(dlrange[1])+"][dMLT="+str(dmltrange[0])+"-"+str(dmltrange[1])+"]"
     plt.savefig('/Users/abrenema/Desktop/'+ title_str + ".ps")
     plt.show()
-    """
 
 
 
