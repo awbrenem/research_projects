@@ -1,0 +1,92 @@
+Header file for RBSP?_FU?_conjunction_values_yyyymmdd_hhmmss.txt (see master_conjunction_list_part5.pro)
+RBSP values are within +/- "time_extent" sec of middle conjunction time.
+NOTE1: many entries have missing FIREBIRD data, including ephemeris. This is correct, and is more prevalent early in the mission...
+...During these time the RBSP L and MLT values are taken as the AVERAGE value during the conjunction, not the values at the closest approach, which is undefined
+NOTE2: the majority of conjunctions have no FIREBIRD hires data. See the FBb column.
+
+Tstart: start of current time chunk
+Tend: end of current time chunk
+Lref: reference L-value (FIREBIRD's L during closest approach)
+MLTref: reference MLT-value (FIREBIRD's MLT during closest approach)
+Lmin: smallest L value (rbsp) during this time chunk
+Lmax: largest L value (rbsp) during this time chunk
+Lmed: median L value (rbsp) during this time chunk
+Lavg: average L value (rbsp) during this time chunk
+MLTmin: smallest MLT value (rbsp) during this time chunk
+MLTmax: largest MLT value (rbsp) during this time chunk
+MLTavg: average MLT value (rbsp) during this time chunk
+MLTmed: median MLT value (rbsp) during this time chunk
+dLmin: smallest delta L value (rbsp-FB) during this time chunk
+dLmax: largest delta L value (rbsp-FB) during this time chunk
+dLavg: average delta L value (rbsp-FB) during this time chunk
+dLmed: median delta L value (rbsp-FB) during this time chunk
+dMLTmin: smallest delta MLT value (rbsp-FB) during this time chunk
+dMLTmax: largest delta MLT value (rbsp-FB) during this time chunk
+dMLTavg: average delta MLT value (rbsp-FB) during this time chunk
+dMLTmed: median delta MLT value (rbsp-FB) during this time chunk
+sepmin: smallest absolute separation during this time chunk
+sepmax: largest absolute separation during this time chunk
+SpecETot_lf: Total spectral non-chorus (60Hz<f<0.1fce_eq) Efield power during this time chunk
+SpecEMax_lf: Max   spectral non-chorus (60Hz<f<0.1fce_eq) Efield power during this time chunk
+SpecEAvg_lf: Avg (nonzero values only) spectral non-chorus (60Hz<f<0.1fce_eq) Efield power during this time chunk
+SpecEMed_lf: Median (nonzero values only) spectral non-chorus (60Hz<f<0.1fce_eq) Efield power during this time chunk
+SpecETot_lb: Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power during this time chunk
+SpecEMax_lb: Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power during this time chunk
+SpecEAvg_lb: Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power during this time chunk
+SpecEMed_lb: Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power during this time chunk
+SpecETot_ub: Total spectral upper band chorus (f>0.5fce_eq) Efield power during this time chunk
+SpecEMax_ub: Max   spectral upper band chorus (f>0.5fce_eq) Efield power during this time chunk
+SpecEAvg_ub: Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power during this time chunk
+SpecEMed_ub: Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power during this time chunk
+SpecBTot_lf: Total spectral non-chorus (60Hz<f<0.1fce_eq) Bfield power during this time chunk
+SpecBMax_lf: Max   spectral non-chorus (60Hz<f<0.1fce_eq) Bfield power during this time chunk
+SpecBAvg_lf: Avg (nonzero values only) spectral non-chorus (60Hz<f<0.1fce_eq) Bfield power during this time chunk
+SpecBMed_lf: Median (nonzero values only) spectral non-chorus (60Hz<f<0.1fce_eq) Bfield power during this time chunk
+SpecBTot_lb: Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power during this time chunk
+SpecBMax_lb: Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power during this time chunk
+SpecBAvg_lb: Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power during this time chunk
+SpecBMed_lb: Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power during this time chunk
+SpecBTot_ub: Total spectral upper band chorus (f>0.5fce_eq) Bfield power during this time chunk
+SpecBMax_ub: Max   spectral upper band chorus (f>0.5fce_eq) Bfield power during this time chunk
+SpecBAvg_ub: Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power during this time chunk
+SpecBMed_ub: Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power during this time chunk
+7E4: Filter bank 7 peak efield amplitude in mV/m (50-100 Hz; 83.8 Hz peak)
+7E5: Filter bank 7 peak efield amplitude in mV/m (200-400 Hz; 334 Hz peak)
+7E6: Filter bank 7 peak efield amplitude in mV/m (800-1600 Hz; 1360 Hz peak)
+7E7: Filter bank 7 peak efield amplitude in mV/m (3200-6500 Hz; 6500 Hz peak)
+7B4: Filter bank 7 peak bfield amplitude in pT (50-100 Hz; 83.8 Hz peak)
+7B5: Filter bank 7 peak bfield amplitude in pT (200-400 Hz; 334 Hz peak)
+7B6: Filter bank 7 peak bfield amplitude in pT (800-1600 Hz; 1360 Hz peak)
+7B7: Filter bank 7 peak bfield amplitude in pT (3200-6500 Hz; 6500 Hz peak)
+13E7: Filter bank 13 peak efield amplitude in mV/m (50-100 Hz; 83.8 Hz peak)
+13E8: Filter bank 13 peak efield amplitude in mV/m (100-200 Hz; 172 Hz peak)
+13E9: Filter bank 13 peak efield amplitude in mV/m (200-400 Hz; 334 Hz peak)
+13E10: Filter bank 13 peak efield amplitude in mV/m (400-800 Hz; 658 Hz peak)
+13E11: Filter bank 13 peak efield amplitude in mV/m (800-1600 Hz; 1360 Hz peak)
+13E12: Filter bank 13 peak efield amplitude in mV/m (1600-3200 Hz; 2800 Hz peak)
+13E13: Filter bank 13 peak efield amplitude in mV/m (3200-6500 Hz; 6500 Hz peak)
+13B7: Filter bank 13 peak bfield amplitude in pT (50-100 Hz; 83.8 Hz peak)
+13B8: Filter bank 13 peak bfield amplitude in pT (100-200 Hz; 172 Hz peak)
+13B9: Filter bank 13 peak bfield amplitude in pT (200-400 Hz; 334 Hz peak)
+13B10: Filter bank 13 peak bfield amplitude in pT (400-800 Hz; 658 Hz peak)
+13B11: Filter bank 13 peak bfield amplitude in pT (800-1600 Hz; 1360 Hz peak)
+13B12: Filter bank 13 peak bfield amplitude in pT (1600-3200 Hz; 2800 Hz peak)
+13B13: Filter bank 13 peak bfield amplitude in pT (3200-6500 Hz; 6500 Hz peak)
+freqpeakO_E: Frequency of peak non-chorus (60Hz<f<0.1fce_eq) Efield power during this time chunk 
+freqpeakL_E: Frequency of peak lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power during this time chunk 
+freqpeakU_E: Frequency of peak upper band chorus (f>0.5fce_eq) Efield power during this time chunk 
+freqpeakO_B: Frequency of peak non-chorus (60Hz<f<0.1fce_eq) Bfield power during this time chunk 
+freqpeakL_B: Frequency of peak lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power during this time chunk 
+freqpeakU_B: Frequency of peak upper band chorus (f>0.5fce_eq) Bfield power during this time chunk 
+f_fcemin_peakO_E: Min value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of non-chorus (60Hz<f<0.1fce_eq) during this time chunk 
+f_fcemax_peakO_E: Max value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of non-chorus (60Hz<f<0.1fce_eq) during this time chunk 
+f_fcemin_peakL_E: Min value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of lower band chorus (0.1fce_eq<f<0.5fce_eq) during this time chunk 
+f_fcemax_peakL_E: Max value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of lower band chorus (0.1fce_eq<f<0.5fce_eq) during this time chunk 
+f_fcemin_peakU_E: Min value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of upper band chorus (f>0.5fce_eq) during this time chunk 
+f_fcemax_peakU_E: Min value of f/fce_eq (f=static freq of max Efield power) for entire range of fce_eq of upper band chorus (f>0.5fce_eq) during this time chunk 
+f_fcemin_peakO_B: Min value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of non-chorus (60Hz<f<0.1fce_eq) during this time chunk 
+f_fcemax_peakO_B: Max value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of non-chorus (60Hz<f<0.1fce_eq) during this time chunk 
+f_fcemin_peakL_B: Min value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of lower band chorus (0.1fce_eq<f<0.5fce_eq) during this time chunk 
+f_fcemax_peakL_B: Max value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of lower band chorus (0.1fce_eq<f<0.5fce_eq) during this time chunk 
+f_fcemin_peakU_B: Min value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of upper band chorus (f>0.5fce_eq) during this time chunk 
+f_fcemax_peakU_B: Min value of f/fce_eq (f=static freq of max Bfield power) for entire range of fce_eq of upper band chorus (f>0.5fce_eq) during this time chunk 
