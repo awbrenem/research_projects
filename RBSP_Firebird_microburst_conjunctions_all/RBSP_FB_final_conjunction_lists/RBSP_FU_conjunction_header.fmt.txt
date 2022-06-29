@@ -1,0 +1,68 @@
+Header file for RBSP?_FU?_conjunction_values.txt and RBSP?_FU?_conjunction_values_hr.txt files 
+RBSP values are within +/-60 min of middle conjunction time
+NOTE1: many entries have missing FIREBIRD data, including ephemeris. This is correct, and is more prevalent early in the mission...
+...During these time the RBSP L and MLT values are taken as the AVERAGE value during the conjunction, not the values at the closest approach, which is undefined
+NOTE2: the majority of conjunctions have no FIREBIRD hires data. See the FBb column.
+
+Tstart: start of conjunction
+Tend: end of conjunction
+Tmin: time of closest conjunction (defined from minimum absolute separation)
+Lrb: L value (rbspa) during min separation time
+Lfb: L value (FU3) during min separation time
+MLTrb: MLT value (rbspa) during min separation time
+MLTfb: MLT value (FU3) during min separation time
+distmin: minimum |separation| in RE b/t rbspa and FU3 at Tminsep
+dLmin: |delta L| of rbspa) during min separation time
+dMLTmin: |delta MLT| of rbspa) during min separation time
+colS: max collimated detector FB survey flux during conjunction (NOT detrended. Doesn't do any good. Rather, this is only useful as a measure of overall precip)
+colHR: max collimated detector FB hires flux during conjunction (detrended over 0.75 sec to get rid of roll variation and isolate microbursts)
+FBb: Number seconds hires FIREBIRD data available during conjunction (Tstart and Tend)
+EMFb: number of sec of EMFISIS burst data within +/-60 min of middle conjunction time
+B1b: number of sec of EFW burst 1 data within +/-60 min of middle conjunction time
+B2b: number of sec of EFW burst 2 data within +/-60 min of middle conjunction time
+SpecETot_lf: Total spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEMax_lf: Max   spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEAvg_lf: Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEMed_lf: Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecETot_lb: Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEMax_lb: Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEAvg_lb: Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle SpecEMed_onjunction time
+SpecEMed_lb: Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecETot_ub: Total spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEMax_ub: Max   spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEAvg_ub: Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecEMed_ub: Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Efield power within +/-60 min of middle conjunction time
+SpecBTot_lf: Total spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMax_lf: Max   spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBAvg_lf: Avg (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMed_lf: Median (nonzero values only) spectral non-chorus (10Hz<f<0.1fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBTot_lb: Total spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMax_lb: Max   spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBAvg_lb: Avg (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMed_lb: Median (nonzero values only) spectral lower band chorus (0.1fce_eq<f<0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBTot_ub: Total spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMax_ub: Max   spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBAvg_ub: Avg (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+SpecBMed_ub: Median (nonzero values only) spectral upper band chorus (f>0.5fce_eq) Bfield power within +/-60 min of middle conjunction time
+7E4: Filter bank 7 peak efield amplitude in mV/m (50-100 Hz; 83.8 Hz peak)
+7E5: Filter bank 7 peak efield amplitude in mV/m (200-400 Hz; 334 Hz peak)
+7E6: Filter bank 7 peak efield amplitude in mV/m (800-1600 Hz; 1360 Hz peak)
+7E7: Filter bank 7 peak efield amplitude in mV/m (3200-6500 Hz; 6500 Hz peak)
+7B4: Filter bank 7 peak bfield amplitude in pT (50-100 Hz; 83.8 Hz peak)
+7B5: Filter bank 7 peak bfield amplitude in pT (200-400 Hz; 334 Hz peak)
+7B6: Filter bank 7 peak bfield amplitude in pT (800-1600 Hz; 1360 Hz peak)
+7B7: Filter bank 7 peak bfield amplitude in pT (3200-6500 Hz; 6500 Hz peak)
+13E7: Filter bank 13 peak efield amplitude in mV/m (50-100 Hz; 83.8 Hz peak)
+13E8: Filter bank 13 peak efield amplitude in mV/m (100-200 Hz; 172 Hz peak)
+13E9: Filter bank 13 peak efield amplitude in mV/m (200-400 Hz; 334 Hz peak)
+13E10: Filter bank 13 peak efield amplitude in mV/m (400-800 Hz; 658 Hz peak)
+13E11: Filter bank 13 peak efield amplitude in mV/m (800-1600 Hz; 1360 Hz peak)
+13E12: Filter bank 13 peak efield amplitude in mV/m (1600-3200 Hz; 2800 Hz peak)
+13E13: Filter bank 13 peak efield amplitude in mV/m (3200-6500 Hz; 6500 Hz peak)
+13B7: Filter bank 13 peak bfield amplitude in pT (50-100 Hz; 83.8 Hz peak)
+13B8: Filter bank 13 peak bfield amplitude in pT (100-200 Hz; 172 Hz peak)
+13B9: Filter bank 13 peak bfield amplitude in pT (200-400 Hz; 334 Hz peak)
+13B10: Filter bank 13 peak bfield amplitude in pT (400-800 Hz; 658 Hz peak)
+13B11: Filter bank 13 peak bfield amplitude in pT (800-1600 Hz; 1360 Hz peak)
+13B12: Filter bank 13 peak bfield amplitude in pT (1600-3200 Hz; 2800 Hz peak)
+13B13: Filter bank 13 peak bfield amplitude in pT (3200-6500 Hz; 6500 Hz peak)
