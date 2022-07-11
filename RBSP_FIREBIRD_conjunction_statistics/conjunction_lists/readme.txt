@@ -1,0 +1,1 @@
+Contains RBSP/FIREBIRD conjunction lists (e.g. FU4_RBSPB_conjunctions_dL10_dMLT10_final.txt) from Mike Shumko AND the modified lists from Breneman (e.g. FU4_RBSPB_conjunctions_hr.sav or FU4_RBSPB_conjunctions.sav)
