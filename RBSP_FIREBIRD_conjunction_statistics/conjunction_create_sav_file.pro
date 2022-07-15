@@ -20,6 +20,9 @@
 ;NOTES:
 ;(1) Shumko's .txt files have a lot of NaN values for the minimum distance (mindist). Not sure why this is, but 
 ;I don't use this variable at any point. 
+;(2) No need to time-correct these. Mikes values come from ephemeris, which Arlo has indicated doesn't need to be time-corrected. 
+;    (Mike verified this with email on July 15, 2022)
+
 
 
 
@@ -96,31 +99,6 @@ if goo[0] ne -1 then vals2 = valstmp[goo,*] else vals2 = valstmp
 
 
 
-;---------------------------------------------------------------------------------------
-;Apply time-correction to all the conjunction times (if the daily context file exists) 
-;---------------------------------------------------------------------------------------
-
-for i=0.,n_elements(t0)-1 do begin 
-  
-  timespan,strmid(time_string(t0[i]),0,10)
-  ff = 0.
-  firebird_load_context_data_cdf_file,strmid(fb,2,1),file_fail=ff
-
-  if not ff then begin 
-    tcor = tsample('Count_Time_Correction',t0[i],time=tms)
-    tdelta_test = abs(t0[i] - tms)
-    if tdelta_test gt 3600. then begin 
-      print,'ISSUE WITH APPLYING TIME CORRECTION'
-    endif else begin 
-      t0[i] += tcor
-      t1[i] += tcor
-      print,'***TCOR = ',tcor , ' sec'
-    endelse
-    store_data,'*',/del
-  endif
-endfor
-
-stop
 
 t0 = time_double(vals2[*,0])
 t1 = time_double(vals2[*,1])
