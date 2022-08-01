@@ -41,7 +41,7 @@ pathoutput = paths.extended_conjunction_values
 ;--------------------------------------------------------
 
 hires = 1   ;conjunctions w/ hires only?
-probe = 'b'
+probe = 'a'
 fb = 'FU4'
 
 minwavefreq = 60. ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
@@ -59,7 +59,16 @@ minwavefreq = 60.  ;(Hz) Lowest freq to be considered for nonchorus. Having too 
 
 ;ADVICE: KEEP THIS VARIABLE SET TO 1.  Broadband low freq power at <0.1 fce can sometimes extend into the chorus band and contaminate chorus id. 
 ;This can be very common in later mission when spectra are noisy. 
-remove_lbchorus_when_concurrent_lowf = 1.
+;By setting this keyword: I'll remove LB chorus if its max value is < the value of the low frequency power at the highest low frequency bin (just under 0.1*fce). 
+;Here I'm assuming that broadband wave power in the low freq bin falls off as 1/f. 
+
+;There are two ways to remove upper band power:
+;(1) require UB power to exceed the low freq power at the highest freq in the low frequency (f<0.1fce) bin. 
+;(2) require only the LB power to exceed it 
+;The first is problematic b/c it removes nearly all the upper band power from consideration.
+;The second is better b/c it retains this power, but here I'm assuming that broadband low frequency spikes are not significantly extending to the upper band. 
+
+remove_chorus_when_concurrent_lowf = 1.
 
 
 
@@ -496,21 +505,48 @@ for j=0.,n_elements(tfb0)-1 do begin
     copy_data,'spec_'+channelnamesB[4]+'-'+channelnamesB[5],'tmpHF_B'
 
 
+    ;-------------------------------------------------------------------------------------
+    ;A common problem is that low freq broadband spikes/noise leaks into the chorus bands.
+    ;Here, remove chorus power if the broadband power at the highest frequency of the low frequency waves (f<0.1fce, typically) at each time is than the
+    ;max power in the chorus bands. 
+    ;-------------------------------------------------------------------------------------
 
-    ;A common problem is that low freq broadband spikes/noise leaks into the chorus lower band.
-    ;Here, remove chorus lower band power if the broadband power at >100 Hz at that exact time is greater
-    if remove_lbchorus_when_concurrent_lowf then begin
+    if remove_chorus_when_concurrent_lowf then begin
       get_data,'tmpLF_E',data=lf
       get_data,'tmpLB_E',data=lb
-      goodv = where(lf.v gt 100.)
-      for bb=0,n_elements(lf.x)-1 do if max(lf.y[bb,goodv],/nan) gt max(lb.y[bb,*],/nan) then lb.y[bb,*] = !values.f_nan
+      get_data,'tmpUB_E',data=ub
+
+      for w=0,n_elements(lf.x)-1 do begin 
+        ;identify max freq of low band power with actual wave power (not NaN)
+        goo = where((lf.v gt minwavefreq) and (finite(lf.y[w,*])))
+        if goo[0] ne -1 then begin
+          goomax = goo[n_elements(goo)-1]  
+          if lf.y[w,goomax] gt max(lb.y[w,*],/nan) then begin
+            lb.y[w,*] = !values.f_nan
+            ub.y[w,*] = !values.f_nan
+          endif
+        endif
+      endfor
       store_data,'tmpLB_E',data=lb
+      store_data,'tmpUB_E',data=ub
+
 
       get_data,'tmpLF_B',data=lf
       get_data,'tmpLB_B',data=lb
-      goodv = where(lf.v gt 100.)
-      for bb=0,n_elements(lf.x)-1 do if max(lf.y[bb,goodv],/nan) gt max(lb.y[bb,*],/nan) then lb.y[bb,*] = !values.f_nan
+      get_data,'tmpUB_B',data=ub
+
+      for w=0,n_elements(lf.x)-1 do begin
+        goo = where((lf.v gt minwavefreq) and (finite(lf.y[w,*])))
+        if goo[0] ne -1 then begin
+          goomax = goo[n_elements(goo)-1]
+          if lf.y[w,goomax] gt max(lb.y[w,*],/nan) then begin
+            lb.y[w,*] = !values.f_nan
+            ub.y[w,*] = !values.f_nan
+          endif
+        endif
+      endfor
       store_data,'tmpLB_B',data=lb
+      store_data,'tmpUB_B',data=ub
 
     endif
 
@@ -541,6 +577,14 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
+;*****************PROBLEM 
+;*****************PROBLEM
+;sometimes freqpeakE will have values of the lowest freq possible (2.135 Hz), even for the upper band, etc. 
+;need to make sure this doesn't happen
+;*****************PROBLEM
+;*****************PROBLEM
+
+
 			if finite(fcetmp[0]) then begin
 
         for b=0,nbands-1 do begin
@@ -555,13 +599,15 @@ for j=0.,n_elements(tfb0)-1 do begin
             dims=size(spectmpE[*,*,b],/dim)
             xind=wh mod dims[0]
             yind=wh / dims[0]
-            freqpeakE[ii,b] = dd.v[yind]
+            ;sometimes yind gets set to zero. 
+            if yind ne 0. then freqpeakE[ii,b] = dd.v[yind] else freqpeakE[ii,b] = !values.f_nan
           endif else freqpeakE[ii,b] = !values.f_nan
           if finite(dataspecB[ii,1,b]) then begin
             dims=size(spectmpB[*,*,b],/dim)
             xind=wh mod dims[0]
             yind=wh / dims[0]
-            freqpeakB[ii,b] = dd.v[yind]
+            ;sometimes yind gets set to zero.
+            if yind ne 0. then freqpeakB[ii,b] = dd.v[yind] else freqpeakB[ii,b] = !values.f_nan
           endif else freqpeakB[ii,b] = !values.f_nan
 
 
@@ -583,12 +629,19 @@ for j=0.,n_elements(tfb0)-1 do begin
           dataspecB[ii,3,b] = median(maxtmpB) & if dataspecB[ii,3,b] eq 0. then dataspecB[ii,3,b] = !values.f_nan
 
 
-stop
+          ;Remove data values when the peak frequency is a NaN (usually at gaps)
+          goo = where(finite(freqpeakE[*,b]) eq 0.)
+          for q=0,ntypes-1 do dataspecE[goo,q,b] = !values.f_nan
+          goo = where(finite(freqpeakB[*,b]) eq 0.)
+          for q=0,ntypes-1 do dataspecB[goo,q,b] = !values.f_nan
+
+
+
         endfor ;b (each band)
 			endif else begin
 			  dataspecE[ii,*,*] = !values.f_nan
         dataspecB[ii,*,*] = !values.f_nan
-			endelse
+			endelse	
 		endfor  ;ii - each chunk
 
 
@@ -606,11 +659,11 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecL',dd.x,maxspec & options,'maxspecL','psym',3
 		ylim,'maxspecL',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstlb_tot',(tmin+tmax)/2.,totalchorusspecL_E
-		store_data,'tstlb_max',(tmin+tmax)/2.,maxchorusspecL_E & options,'tstlb_max','colors',1
-		store_data,'tstlb_med',(tmin+tmax)/2.,medianchorusspecL_E & options,'tstlb_med','colors',100
-		store_data,'tstlb_avg',(tmin+tmax)/2.,avgchorusspecL_E & options,'tstlb_avg','colors',250
-		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakL_E & options,'fpeaklb','psym',-4
+		store_data,'tstlb_tot',(tmin+tmax)/2.,dataspecE[*,0,1] 
+		store_data,'tstlb_max',(tmin+tmax)/2.,dataspecE[*,1,1] & options,'tstlb_max','colors',1
+		store_data,'tstlb_avg',(tmin+tmax)/2.,dataspecE[*,2,1] & options,'tstlb_avg','colors',250
+		store_data,'tstlb_med',(tmin+tmax)/2.,dataspecE[*,3,1] & options,'tstlb_med','colors',100
+		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakE[*,1] & options,'fpeaklb','psym',-4
 		options,'fpeaklb','colors',250
 		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'psym',-4
 		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'thick',2
@@ -629,11 +682,17 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecU',dd.x,maxspec & options,'maxspecU','psym',3
 		ylim,'maxspecU',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstub_tot',(tmin+tmax)/2.,totalchorusspecU_E
-		store_data,'tstub_max',(tmin+tmax)/2.,maxchorusspecU_E & options,'tstub_max','colors',1
-		store_data,'tstub_med',(tmin+tmax)/2.,medianchorusspecU_E & options,'tstub_med','colors',100
-		store_data,'tstub_avg',(tmin+tmax)/2.,avgchorusspecU_E & options,'tstub_avg','colors',250
-		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakU_E & options,'fpeakub','psym',-4
+
+
+
+
+
+
+		store_data,'tstub_tot',(tmin+tmax)/2.,dataspecE[*,0,2]
+		store_data,'tstub_max',(tmin+tmax)/2.,dataspecE[*,1,2] & options,'tstub_max','colors',1
+		store_data,'tstub_avg',(tmin+tmax)/2.,dataspecE[*,2,2] & options,'tstub_avg','colors',250
+		store_data,'tstub_med',(tmin+tmax)/2.,dataspecE[*,3,2] & options,'tstub_med','colors',100
+		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakE[*,2] & options,'fpeakub','psym',-4
 		options,'fpeakub','colors',250
 		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'psym',-4
 		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'thick',2
@@ -652,11 +711,11 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecO',dd.x,maxspec & options,'maxspecO','psym',3
 		ylim,'maxspecO',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstlf_tot',(tmin+tmax)/2.,totalnonchorusspec_E
-		store_data,'tstlf_max',(tmin+tmax)/2.,maxnonchorusspec_E & options,'tstlf_max','colors',1
-		store_data,'tstlf_med',(tmin+tmax)/2.,mediannonchorusspec_E & options,'tstlf_med','colors',100
-		store_data,'tstlf_avg',(tmin+tmax)/2.,avgnonchorusspec_E & options,'tstlf_avg','colors',250
-		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakO_E & options,'fpeaklf','psym',-4
+		store_data,'tstlf_tot',(tmin+tmax)/2.,dataspecE[*,0,0]
+		store_data,'tstlf_max',(tmin+tmax)/2.,dataspecE[*,1,0] & options,'tstlf_max','colors',1
+		store_data,'tstlf_avg',(tmin+tmax)/2.,dataspecE[*,2,0] & options,'tstlf_avg','colors',250
+		store_data,'tstlf_med',(tmin+tmax)/2.,dataspecE[*,3,0] & options,'tstlf_med','colors',100
+		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakE[*,0] & options,'fpeaklf','psym',-4
 		options,'fpeaklf','colors',250
 		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'psym',-4
 		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'thick',2
@@ -682,7 +741,7 @@ stop
 		timebar,mb_list.time,color=250
 		pclose
 
-		stop
+	
 
 
 
@@ -695,11 +754,11 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecL',dd.x,maxspec & options,'maxspecL','psym',3
 		ylim,'maxspecL',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstlb_tot',(tmin+tmax)/2.,totalchorusspecL_B
-		store_data,'tstlb_max',(tmin+tmax)/2.,maxchorusspecL_B & options,'tstlb_max','colors',1
-		store_data,'tstlb_med',(tmin+tmax)/2.,medianchorusspecL_B & options,'tstlb_med','colors',100
-		store_data,'tstlb_avg',(tmin+tmax)/2.,avgchorusspecL_B & options,'tstlb_avg','colors',250
-		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakL_B & options,'fpeaklb','psym',-4
+		store_data,'tstlb_tot',(tmin+tmax)/2.,dataspecB[*,0,1]
+		store_data,'tstlb_max',(tmin+tmax)/2.,dataspecB[*,1,1] & options,'tstlb_max','colors',1
+		store_data,'tstlb_avg',(tmin+tmax)/2.,dataspecB[*,2,1] & options,'tstlb_avg','colors',250
+		store_data,'tstlb_med',(tmin+tmax)/2.,dataspecB[*,3,1] & options,'tstlb_med','colors',100
+		store_data,'fpeaklb',(tmin+tmax)/2.,freqpeakB[*,1] & options,'fpeaklb','psym',-4
 		options,'fpeaklb','colors',250
 		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'psym',-4
 		options,['tstlb_tot','tstlb_max','tstlb_med','tstlb_avg','fpeaklb'],'thick',2
@@ -718,11 +777,11 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecU',dd.x,maxspec & options,'maxspecU','psym',3
 		ylim,'maxspecU',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstub_tot',(tmin+tmax)/2.,totalchorusspecU_B
-		store_data,'tstub_max',(tmin+tmax)/2.,maxchorusspecU_B & options,'tstub_max','colors',1
-		store_data,'tstub_med',(tmin+tmax)/2.,medianchorusspecU_B & options,'tstub_med','colors',100
-		store_data,'tstub_avg',(tmin+tmax)/2.,avgchorusspecU_B & options,'tstub_avg','colors',250
-		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakU_B & options,'fpeakub','psym',-4
+		store_data,'tstub_tot',(tmin+tmax)/2.,dataspecB[*,0,2]
+		store_data,'tstub_max',(tmin+tmax)/2.,dataspecB[*,1,2] & options,'tstub_max','colors',1
+		store_data,'tstub_avg',(tmin+tmax)/2.,dataspecB[*,2,2] & options,'tstub_avg','colors',250
+		store_data,'tstub_med',(tmin+tmax)/2.,dataspecB[*,3,2] & options,'tstub_med','colors',100
+		store_data,'fpeakub',(tmin+tmax)/2.,freqpeakB[*,2] & options,'fpeakub','psym',-4
 		options,'fpeakub','colors',250
 		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'psym',-4
 		options,['tstub_tot','tstub_max','tstub_med','tstub_avg','fpeakub'],'thick',2
@@ -741,11 +800,11 @@ stop
 		for i=0,n_elements(dd.x)-1 do maxspec[i] = max(dd.y[i,*],/nan)
 		store_data,'maxspecO',dd.x,maxspec & options,'maxspecO','psym',3
 		ylim,'maxspecO',min(maxspec,/nan),2*max(maxspec,/nan),1
-		store_data,'tstlf_tot',(tmin+tmax)/2.,totalnonchorusspec_B
-		store_data,'tstlf_max',(tmin+tmax)/2.,maxnonchorusspec_B & options,'tstlf_max','colors',1
-		store_data,'tstlf_med',(tmin+tmax)/2.,mediannonchorusspec_B & options,'tstlf_med','colors',100
-		store_data,'tstlf_avg',(tmin+tmax)/2.,avgnonchorusspec_B & options,'tstlf_avg','colors',250
-		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakO_B & options,'fpeaklf','psym',-4
+		store_data,'tstlf_tot',(tmin+tmax)/2.,dataspecB[*,0,0]
+		store_data,'tstlf_max',(tmin+tmax)/2.,dataspecB[*,1,0] & options,'tstlf_max','colors',1
+		store_data,'tstlf_avg',(tmin+tmax)/2.,dataspecB[*,2,0] & options,'tstlf_avg','colors',250
+		store_data,'tstlf_med',(tmin+tmax)/2.,dataspecB[*,3,0] & options,'tstlf_med','colors',100
+		store_data,'fpeaklf',(tmin+tmax)/2.,freqpeakB[*,0] & options,'fpeaklf','psym',-4
 		options,'fpeaklf','colors',250
 		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'psym',-4
 		options,['tstlf_tot','tstlf_max','tstlf_med','tstlf_avg','fpeaklf'],'thick',2
@@ -785,9 +844,9 @@ stop
 		;Figure out if we're dealing with e12 or e34 for FBK data 
 		e1234 = ''
 		tstvar = tnames('fbk7_e??dc_pk')
-		if tstvar ne '' then e1234 = strmid(tstvar,15,3)		
+		if tstvar ne '' then e1234 = strmid(tstvar,5,3)		
 		tstvar = tnames('fbk13_e??dc_pk')
-		if tstvar ne '' then e1234 = strmid(tstvar,16,3)
+		if tstvar ne '' then e1234 = strmid(tstvar,6,3)
 
 
 		;---------------------------------------------------------------
@@ -831,7 +890,7 @@ stop
 			  for ch=0,12 do fbk13E[ii,ch] = float(max(fbktmp_13E[*,ch],/nan))
 			endif else for ch=0,12 do fbk13E[ii,ch] = !values.f_nan
 			if keyword_set(fbktmp_13B) then begin
-			  for ch=0,12 do fbk13B[ii,ch] = 1000.*float(max(fbktmp_13B[*,ch],/nan))
+			  for ch=0,12 do fbk13B[ii,ch] = float(max(fbktmp_13B[*,ch],/nan))
 			endif else for ch=0,12 do fbk13B[ii,ch] = !values.f_nan
 
 
@@ -859,10 +918,10 @@ stop
 			store_data,'fbk7_Ewmax_5_comb',data=['fbk7_'+e1234+'dc_pk_5','fbk7_Ewmax_5']
 			store_data,'fbk7_Ewmax_6_comb',data=['fbk7_'+e1234+'dc_pk_6','fbk7_Ewmax_6']
 
-			store_data,'fbk7_Bwmax_3',(tmin+tmax)/2.,fbk7B[*,3]/1000.
-			store_data,'fbk7_Bwmax_4',(tmin+tmax)/2.,fbk7B[*,4]/1000.
-			store_data,'fbk7_Bwmax_5',(tmin+tmax)/2.,fbk7B[*,5]/1000.
-			store_data,'fbk7_Bwmax_6',(tmin+tmax)/2.,fbk7B[*,6]/1000.
+			store_data,'fbk7_Bwmax_3',(tmin+tmax)/2.,fbk7B[*,3];*1000.
+			store_data,'fbk7_Bwmax_4',(tmin+tmax)/2.,fbk7B[*,4];*1000.
+			store_data,'fbk7_Bwmax_5',(tmin+tmax)/2.,fbk7B[*,5];*1000.
+			store_data,'fbk7_Bwmax_6',(tmin+tmax)/2.,fbk7B[*,6];*1000.
 			store_data,'fbk7_Bwmax_3_comb',data=['fbk7_scmw_pk_3','fbk7_Bwmax_3']
 			store_data,'fbk7_Bwmax_4_comb',data=['fbk7_scmw_pk_4','fbk7_Bwmax_4']
 			store_data,'fbk7_Bwmax_5_comb',data=['fbk7_scmw_pk_5','fbk7_Bwmax_5']
@@ -896,7 +955,7 @@ stop
     for b=0,nbands-1 do f_fcemax_peakE[*,b] = freqpeakE[*,b]/fcemin
     for b=0,nbands-1 do f_fcemax_peakB[*,b] = freqpeakB[*,b]/fcemin
 
-stop
+
 
 		;---------------------------------------------------
 		;Output results to file
@@ -943,6 +1002,7 @@ stop
 			f_fcemin_peakB[qq,3], f_fcemax_peakB[qq,3], format=fmt
 		endfor 
 
+
 ;		for qq=0,n_elements(tmin)-1 do begin
 ;		  printf,lun,time_string(tmin[qq])+' ',time_string(tmax[qq]), $
 ;		    Lref, MLTref, $
@@ -972,7 +1032,7 @@ stop
 ;		endfor
 		close,lun
 		free_lun,lun
-;stop
+stop
 
 	endif  ;for no missing data
 endfor
