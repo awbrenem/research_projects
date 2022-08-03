@@ -35,8 +35,10 @@
 
 
 
+;**********************************************
+;POSSIBLE ISSUES 
 
-
+;**********************************************
 
 
 
@@ -53,31 +55,33 @@ probe = 'a'
 fb = 'FU4'
 pmtime = 60.  ;plus/minus time (min) from closest conjunction for data consideration
 
+minwavefreq = 60.  ;(Hz) Lowest freq to be considered for nonchorus. Having too low (e.g. 20 Hz) exposes the analysis to the 
+				;abnormally large power at the lowest spectral bins
+
+
+;ADVICE: KEEP THIS VARIABLE SET TO 1.  Broadband low freq power at <0.1 fce can sometimes extend into the chorus band and contaminate chorus id. 
+;This can be very common in later mission when spectra are noisy. 
+remove_chorus_when_concurrent_lowf = 1.
+
 
 ;---------------------------------------------------------------
-
-
-
-
+;Load data and set output path
+;---------------------------------------------------------------
 
 paths = get_project_paths()
 
 
-
-
 ;Grab local path to save data
 homedir = (file_search('~',/expand_tilde))[0]+'/'
-;pathoutput = homedir + 'Desktop/'
-
 pathoutput = paths.IMMEDIATE_CONJUNCTION_VALUES
-
 if hires then suffix = '_conjunctions_hr.sav' else suffix = '_conjunctions.sav'
 
 
 
 
-;--------------
+;------------------------------------------------------------
 ;Conjunction data for all the FIREBIRD passes with HiRes data
+;------------------------------------------------------------
 
 
 fn = fb+'_'+'RBSP'+strupcase(probe)+suffix
@@ -89,15 +93,20 @@ rb = 'rbsp'+probe
 tfb0 = t0
 tfb1 = t1
 
-;Print list of times
+
+
+;------------------------------------------------------------
+;Print list of times so user can select conjunction to start on
+;------------------------------------------------------------
+
 for bb=0,n_elements(tfb0)-1 do print,bb,' ',time_string(tfb0[bb])
-;for bb=1900,2200 do print,bb,' ',time_string(tfb0[bb]),'  ',time_string(tfb1[bb])
 
 
-;daytst = '0000-00-00'   ;used as a test to see if we need to load another day's data
 
+;---------------------------------------------------------------------------------
+;Main loop for every conjunction
+;---------------------------------------------------------------------------------
 
-;For every conjunction
 for j=0.,n_elements(tfb0)-1 do begin
 
 	;Make sure all the variables created by time_clip are deleted b/c if time_clip finds no data in requested timerange
@@ -105,17 +114,21 @@ for j=0.,n_elements(tfb0)-1 do begin
 	store_data,'*_tc',/del
 
 
-
+  ;--------------------------------------------
 	;Manually select the conjunction to start on.
 	if j eq 0 then stop
 	j = float(j)
+	;--------------------------------------------
 
-	;Figure out if a conjunction crosses the day boundary (more than one day of data to load)
+
+
+  ;-----------------------------------------------------------------------
+  ;Set timerange either to a single day, or two days if a conjunction crosses the day boundary
+  ;-----------------------------------------------------------------------
+
 	tstart = time_string(tfb0[j])  ; - (pmtime+10.)*60.
 	tend   = time_string(tfb0[j] + (pmtime+10.)*60.)
 	ndays_load = floor((time_double(strmid(tend,0,10)) - time_double(strmid(tstart,0,10)))/86400 + 1)
-
-
 
 
 	currday = strmid(time_string(tfb0[j]),0,10)
@@ -125,72 +138,103 @@ for j=0.,n_elements(tfb0)-1 do begin
 	trange = [currday,nextday]
 
 
-;	load_new_data = daytst ne currday
+
+  ;-----------------------------------------------------------------------
+	;***DON'T REMOVE!!!!  Need to do this each time or else the amplitudes can get filled in incorrectly.
+	;-----------------------------------------------------------------------
+
+	store_data,'*',/delete
 
 
-	;Load new data if required
-;	if load_new_data or ndays_load gt 1 then begin
-;		if testing then stop
-;		if ndays_load eq 1 then daytst = currday
-;		if ndays_load gt 1 then daytst = nextday
+	;-----------------------------------------------------------------------
+	;load FIREBIRD context data. 
+	;Lots of missing FIREBIRD data, so before we load all the other data we'll test to see if it's been loaded.
+	;If not, then skip to next data
+	;-----------------------------------------------------------------------
 
 
-		;Need to do this each time or else the amplitudes can get filled in incorrectly.
-		;***DON'T REMOVE!!!!
-		store_data,'*',/delete
+	firebird_load_context_data_cdf_file,strmid(fb,2,1)    ;(used to test for "missingdata" only)
 
 
-
-
-
-		;load FIREBIRD context data
-		firebird_load_context_data_cdf_file,strmid(fb,2,1)
-
-
-
-
-    ;-----------------------------------------------------------------------
-		;Lots of missing FIREBIRD data, so we'll test to see if it's been loaded.
-		;If not, then skip to next data
-		xtst1 = tsample('flux_context_'+fb,[time_double(trange[0]),time_double(trange[1])])
-		missingdata = 0
-		if n_elements(xtst1) eq 1 and finite(xtst1[0]) eq 0 then missingdata = 1
+	xtst1 = tsample('flux_context_'+fb,[time_double(trange[0]),time_double(trange[1])])
+	missingdata = 0
+	if n_elements(xtst1) eq 1 and finite(xtst1[0]) eq 0 then missingdata = 1
 
 
 
+  ;-----------------------------------------------------------------------
+  ;FIREBIRD context data loaded then load all other data and proceed with code 
+  ;-----------------------------------------------------------------------
 
-		if missingdata ne 1 then begin
+	if missingdata ne 1 then begin	
 
-			;These load multi days automatically
-			timespan,trange[0],ndays_load,/days
-			
+    rbsp_load_efw_cdf,probe,'l2','fbk'
+    rbsp_load_ephem_cdf,probe
+    rbsp_load_emfisis_cdf,probe,'l3','4sec/gsm'
+    rbsp_load_emfisis_cdf,probe,'l2','wfr/spectral-matrix'
 
-      ;load EFW data
-      rbsp_load_efw_cdf,probe,'l2','spec'
-      rbsp_load_efw_cdf,probe,'l2','fbk'
+    ;--------------------------------------------------
+    ;Get burst times
+    ;This is a bit complicated for spinperiod data b/c the short
+    ;B2 snippets can be less than the spinperiod.
+    ;So, I'm padding the B2 times by +/- a half spinperiod so that they don't
+    ;disappear upon interpolation to the spinperiod data.
+    ;--------------------------------------------------
 
-			;load ephemeris data
-			rbsp_load_ephem_cdf,probe
+    ;B1 times and rates
+    b1t = ''  ;make sure this is reset
+    b1t = rbsp_get_burst_times_rates_list(probe)
 
-			;load EMFISIS data
-      rbsp_load_emfisis_cdf,probe,'l3','4sec/gsm'
-     
+    ;B2 times
+    b2t = ''  ;make sure this is reset
+    b2t = rbsp_get_burst2_times_list(probe)
 
-		endif  ;if not missingdata
-;	endif  ;load new data
-
-
-
-	if missingdata ne 1 then begin
+    ;EMFISIS burst times
+    rbsp_load_emfisis_burst_times,probe
 
 
-		;create artifical times array with 1-sec cadence for timerange requested.
+
+    ;----------------------------------
+    ;Get rid of negative Bo magnitude values
+    ;----------------------------------
+
+    get_data,'Magnitude',data=d,dlim=dlim
+    goo = where(d.y lt 0.)
+    if goo[0] ne -1 then d.y[goo] = !values.f_nan
+    store_data,'Magnitude',data=d,dlim=dlim
+
+
+    ;---------------------------------
+    ;Change EMFISIS units of EuEu to (mV/m)^2/Hz
+    ;---------------------------------
+
+    get_data,'EuEu',data=d,dlim=dlim
+    dlim.ysubtitle = '[mV^2/m^2/Hz]'
+    dlim.cdf.vatt.units = 'mV^2/m^2/Hz'
+    d.y *= 1000.*1000.
+    store_data,'EuEu',data=d,dlim=dlim
+    zlim,'EuEu',1d-6,1d0,1
+
+    ;---------------------------------
+    ;Change FBK scmw values to pT
+    ;---------------------------------
+
+    get_data,'fbk7_scmw_pk',data=d,dlim=dlim
+    dlim.ysubtitle = '[pT]'
+    dlim.cdf.vatt.units = 'pT'
+    d.y *= 1000.
+    store_data,'fbk7_scmw_pk',data=d,dlim=dlim
+
+
+
+    ;----------------------------------------------------------------------
+		;create conjunction times tplot variable (via artifical times array with 1-sec cadence for timerange requested)
+		;----------------------------------------------------------------------
+
 		ntimes = time_double(trange[1]) - time_double(trange[0])
 		ndays = ntimes/86400.
 		times_artificial = time_double(trange[0]) + dindgen(ndays*ntimes)
 		vals = fltarr(n_elements(times_artificial))
-
-
 
 		goo = where((times_artificial ge tfb0[j]) and (times_artificial le tfb1[j]))
 		if goo[0] ne -1 then vals[goo] = 1.
@@ -200,65 +244,22 @@ for j=0.,n_elements(tfb0)-1 do begin
 		options,'fb_conjunction_times','ytitle','FB!Cconj'
 
 
-		get_data,'Magnitude',ttt,magnit
-		fce = 28.*magnit
 
-		tinterpol_mxn,rb+'_mlat','Magnitude'
-		get_data,rb+'_mlat_interp',data=mlat
-		fce_eq = fce*cos(2*mlat.y*!dtor)^3/sqrt(1+3*sin(mlat.y*!dtor)^2)
+    ;----------------------------------------------------------------------
+    ;create fce tplot variables
+    ;----------------------------------------------------------------------
 
 
-		store_data,'fce_eq',ttt,fce_eq
-		store_data,'fce_eq_2',ttt,fce_eq/2.
-		store_data,'fce_eq_10',ttt,fce_eq/10.
-		store_data,'fci_eq',ttt,fce_eq/1836.
-		store_data,'flh_eq',ttt,sqrt(fce_eq*fce_eq/1836.)
-
-		store_data,'spec64_e12ac_comb',data=['spec64_e12ac','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
-		store_data,'spec64_scmw_comb', data=['spec64_scmw','fce_eq','fce_eq_2','fce_eq_10'];,'fci_eq','flh_eq']
-
-		ylim,'spec64_e12ac_comb',1,6000,1
-		ylim,'spec64_scmw_comb',1,6000,1
+    fce_tplot_lines_create,'Magnitude',[1.,0.5,0.1,1/1836.],$
+      tspectra=['EuEu','BwBw'],tmlat=rb+'_mlat',$
+      fnames=['fce_eq','fce_eq_2','fce_eq_10','fci_eq']
 
 
 
-		;--------------------------------------------------
-		;Get burst times
-		;This is a bit complicated for spinperiod data b/c the short
-		;B2 snippets can be less than the spinperiod.
-		;So, I'm padding the B2 times by +/- a half spinperiod so that they don't
-		;disappear upon interpolation to the spinperiod data.
-		;--------------------------------------------------
-
-
-		;get B1 times and rates from this routine
-		b1t = ''
-		b1t = rbsp_get_burst_times_rates_list(probe)
-
-		;get B2 times from this routine
-		b2t = ''
-		b2t = rbsp_get_burst2_times_list(probe)
-
-
-
-		options,'*','panel_size',1
-
-		rbsp_load_emfisis_burst_times,probe
-
-
-
-
-		store_data,'lcomb',data=[rb+'_lshell','McIlwainL']
-		store_data,'mltcomb',data=[rb+'_mlt','MLT']
-		options,['MLT','McIlwainL',strlowcase(rb)+'_lshell_interp','MLT',strlowcase(rb)+'_mlt_interp'],'psym',-2
-
-		options,'lcomb','colors',[0,250]
-		options,'mltcomb','colors',[0,250]
-		ylim,'lcomb',0,10
-		ylim,'mltcomb',0,24
-
-
+    ;----------------------------------------------------------------------
 		;Set tlimits for conjunction
+		;----------------------------------------------------------------------
+
 		get_data,'fb_conjunction_times',ttmp,dtmp
 		goo = where(dtmp eq 1)
 		tmid = (ttmp[goo[0]] + ttmp[goo[n_elements(goo)-1]])/2.
@@ -268,8 +269,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 		print,time_string(t0z)
 		print,time_string(t1z)
-		if testing then stop
-
 
 
 
@@ -277,7 +276,7 @@ for j=0.,n_elements(tfb0)-1 do begin
   	;Find how many seconds of burst availability there is in the timerange t0z to t1z
   	;-------------------------------------------------------------------------
 
-		;First do this for EMFISIS burst data
+		;EMFISIS burst data
 		get_data,rb+'_emfisis_burst',t,d
 		goo = where((t ge t0z) and (t le t1z))
 		nsec_emf = !values.f_nan
@@ -289,15 +288,15 @@ for j=0.,n_elements(tfb0)-1 do begin
 		endif
 
 
-		;Now do this for EFW B2
+		;EFW B2
 		;...create artificial array of times.
-		timestmp = time_double(currday) + dindgen(100.*86400.)/99.
+    timestmp = time_double(currday) + dindgen(100.*86400.)/99.
 		valstmp = fltarr(n_elements(timestmp))
 		cadence = n_elements(timestmp)/86400.
 		nsec_b2 = !values.f_nan
 		if is_struct(b2t) then begin
-			for i=0,n_elements(b2t.duration)-1 do begin
-					goo = where((timestmp ge b2t.startb2[i]) and (timestmp le b2t.endb2[i]))
+			for i=0,n_elements(b2t.duration)-1 do begin $
+					goo = where((timestmp ge b2t.startb2[i]) and (timestmp le b2t.endb2[i])) & $
 					if goo[0] ne -1 then valstmp[goo] = 1.
 			endfor
 			goo = where((timestmp ge t0z) and (timestmp le t1z))
@@ -305,84 +304,128 @@ for j=0.,n_elements(tfb0)-1 do begin
 		endif
 
 
-		;...now do this for EFW B1
-		timestmp = time_double(currday) + dindgen(100.*86400.)/99.
+		;EFW B1
+    timestmp = time_double(currday) + dindgen(100.*86400.)/99.
 		valstmp = fltarr(n_elements(timestmp))
 		cadence = n_elements(timestmp)/86400.
 		nsec_b1 = !values.f_nan
 		if is_struct(b1t) then begin
-			for i=0,n_elements(b1t.duration)-1 do begin
-					goo = where((timestmp ge b1t.startb1[i]) and (timestmp le b1t.endb1[i]))
+			for i=0,n_elements(b1t.duration)-1 do begin $
+					goo = where((timestmp ge b1t.startb1[i]) and (timestmp le b1t.endb1[i])) & $
 					if goo[0] ne -1 then valstmp[goo] = 1.
 			endfor
 			goo = where((timestmp ge t0z) and (timestmp le t1z))
 			if goo[0] ne -1 then nsec_b1 = total(valstmp[goo])/cadence
 		endif
 
-
-
-
+	
 
 
 		;-----------------------------------------------------------
-		;Find the average spectral power in various frequency bands within
-		;+/-1 hr of conjunction
+		;Find the average spectral power in various frequency bands within +/-1 hr of conjunction
 		;-----------------------------------------------------------
 
 
     ;Names for splitting the spectra up
-		channelnames = ['0','20Hz','0.1fce','0.5fce','fce','7300Hz']
+		mintmp = strtrim(floor(minwavefreq),2)
+		channelnamesE = 'E_'+['0',mintmp+'Hz','0.1fce','0.5fce','fce','7300Hz']
+		channelnamesB = 'B_'+['0',mintmp+'Hz','0.1fce','0.5fce','fce','7300Hz']
+
+    get_data,'EuEu',data=dd,dlim=dlimE,lim=limE
+    get_data,'BwBw',data=dd,dlim=dlimB,lim=limB
+		spectmpE = tsample('EuEu',[t0z,t1z],times=ttspec)
+		spectmpB = tsample('BwBw',[t0z,t1z],times=ttspec)
 
 
-		get_data,'spec64_e12ac',data=dd,dlim=dlim,lim=lim
-    spectmpE = tsample('spec64_e12ac',[t0z,t1z],times=ttspec)
-    spectmpB = tsample('spec64_scmw',[t0z,t1z],times=ttspec)
-		tinterpol_mxn,'fce_eq','spec64_e12ac'
+    tinterpol_mxn,'fce_eq','EuEu'
 		fcetmp = tsample('fce_eq_interp',[t0z,t1z],times=ttfce)
 
 
-    if finite(fcetmp[0]) then begin 
+		if finite(fcetmp[0]) then begin 
 
-      freq_lowlimit = replicate(20.,n_elements(fcetmp))
-          
-      ;frequency lines that will be used to divide up the spectra
-      freqbands = [[freq_lowlimit],[fcetmp/10.],[fcetmp/2.],[fcetmp]]
-      store_data,'fces',ttfce,freqbands
+		freq_lowlimit = replicate(minwavefreq,n_elements(fcetmp))
+			
+		;frequency lines that will be used to divide up the spectra
+		freqbands = [[freq_lowlimit],[fcetmp/10.],[fcetmp/2.],[fcetmp]]
+		store_data,'fces',ttfce,freqbands
 
-      store_data,'spectmpE',ttspec,spectmpE,dd.v,dlim=dlim,lim=lim
-      store_data,'spectmpB',ttspec,spectmpB,dd.v,dlim=dlim,lim=lim
-      
-      spectrum_split_by_band,'spectmpE','fces',chnames=channelnames,wv=wave_valsE
-      spectrum_split_by_band,'spectmpB','fces',chnames=channelnames,wv=wave_valsB
-      
-            
-    endif else begin
-      wave_valsE = replicate(!values.f_nan,n_elements(channelnames),4)
-      wave_valsB = replicate(!values.f_nan,n_elements(channelnames),4)
-    endelse
-
-
-    goo = where(wave_valsE eq 0.)
-    if goo[0] ne -1 then wave_valsE[goo] = !values.f_nan
-    
-    goo = where(wave_valsB eq 0.)
-    if goo[0] ne -1 then wave_valsB[goo] = !values.f_nan
+		store_data,'spectmpE',ttspec,spectmpE,dd.v,dlim=dlimE,lim=limE
+		store_data,'spectmpB',ttspec,spectmpB,dd.v,dlim=dlimB,lim=limB
+		
+		spectrum_split_by_band,'spectmpE','fces',chnames=channelnamesE,wv=wave_valsE
+		spectrum_split_by_band,'spectmpB','fces',chnames=channelnamesB,wv=wave_valsB
+		
+				
+		endif else begin
+  		wave_valsE = replicate(!values.f_nan,n_elements(channelnames),7)
+  		wave_valsB = replicate(!values.f_nan,n_elements(channelnames),7)
+		endelse
 
 
+		goo = where(wave_valsE eq 0.)
+		if goo[0] ne -1 then wave_valsE[goo] = !values.f_nan    
+		goo = where(wave_valsB eq 0.)
+		if goo[0] ne -1 then wave_valsB[goo] = !values.f_nan
+
+
+		copy_data,'spec_'+channelnamesE[1]+'-'+channelnamesE[2],'tmpLF_E'
+		copy_data,'spec_'+channelnamesE[2]+'-'+channelnamesE[3],'tmpLB_E'
+		copy_data,'spec_'+channelnamesE[3]+'-'+channelnamesE[4],'tmpUB_E'
+		copy_data,'spec_'+channelnamesE[4]+'-'+channelnamesE[5],'tmpHF_E'
+
+		copy_data,'spec_'+channelnamesB[1]+'-'+channelnamesB[2],'tmpLF_B'
+		copy_data,'spec_'+channelnamesB[2]+'-'+channelnamesB[3],'tmpLB_B'
+		copy_data,'spec_'+channelnamesB[3]+'-'+channelnamesB[4],'tmpUB_B'
+		copy_data,'spec_'+channelnamesB[4]+'-'+channelnamesB[5],'tmpHF_B'
+
+
+
+	;--------------------------------------------------------------------------------------------------
+    ;A common problem is that low freq broadband spikes/noise leaks into the chorus bands.
+    ;Here, remove chorus power if the broadband power at the highest frequency of the low frequency 
+    ;waves (f<0.1fce, typically) at each time is than the max power in the chorus bands. 
+	;--------------------------------------------------------------------------------------------------
+
+    if remove_chorus_when_concurrent_lowf then begin
+      get_data,'tmpLF_E',data=lf
+      get_data,'tmpLB_E',data=lb
+      get_data,'tmpUB_E',data=ub
+
+      for w=0,n_elements(lf.x)-1 do begin 
+        ;identify max freq of low band power with actual wave power (not NaN)
+        goo = where((lf.v gt minwavefreq) and (finite(lf.y[w,*])))
+        if goo[0] ne -1 then begin
+          goomax = goo[n_elements(goo)-1]  
+          if lf.y[w,goomax] gt max(lb.y[w,*],/nan) then lb.y[w,*] = !values.f_nan
+          if lf.y[w,goomax] gt max(ub.y[w,*],/nan) then ub.y[w,*] = !values.f_nan
+        endif
+      endfor
+      store_data,'tmpLB_E',data=lb
+      store_data,'tmpUB_E',data=ub
+
+
+      get_data,'tmpLF_B',data=lf
+      get_data,'tmpLB_B',data=lb
+      get_data,'tmpUB_B',data=ub
+
+      for w=0,n_elements(lf.x)-1 do begin
+        goo = where((lf.v gt minwavefreq) and (finite(lf.y[w,*])))
+        if goo[0] ne -1 then begin
+          goomax = goo[n_elements(goo)-1]
+          if lf.y[w,goomax] gt max(lb.y[w,*],/nan) then lb.y[w,*] = !values.f_nan
+          if lf.y[w,goomax] gt max(ub.y[w,*],/nan) then ub.y[w,*] = !values.f_nan
+        endif
+      endfor
+      store_data,'tmpLB_B',data=lb
+      store_data,'tmpUB_B',data=ub
+    endif
 
 
 
 
-
-
-
-
-
-
-
-	;---------------------------------------------------------
-	;Find the MLT, L, deltaMLT and deltaL of the closest pass
-	;---------------------------------------------------------
+  	;---------------------------------------------------------
+  	;Find the MLT, L, deltaMLT and deltaL of the closest pass
+  	;---------------------------------------------------------
 
 		tinterpol_mxn,rb+'_lshell','McIlwainL',newname=rb+'_lshell_interp'
 		tinterpol_mxn,rb+'_mlt','MLT',newname=rb+'_mlt_interp'
@@ -411,28 +454,27 @@ for j=0.,n_elements(tfb0)-1 do begin
 		stop
 		endif
 
-	;	;add zero line for difference plots
-	;	get_data,rb+'_lshell',tt,dd
-	;	store_data,'zeroline',data={x:tt,y:replicate(0.,n_elements(tt))}
-	;	options,'zeroline','linestyle',2
-	;	store_data,'ldiff_tc_comb',data=['ldiff_tc','zeroline']
-	;	store_data,'mltdiff_tc_comb',data=['mltdiff_tc','zeroline']
-	;	options,['ldiff_tc','mltdiff_tc'],'psym',-2
 
-		;Find absolute value of sc separation. We'll use the min value of this to define
-		;dLmin and dMLTmin
-		sc_absolute_separation,rb+'_lshell_interp_tc','fb_mcilwainL_tc',$
-			rb+'_mlt_interp_tc','fb_mlt_tc';,/km
+    ;------------------------------------------------
+		;Find absolute value of sc separation. We'll use the min value of this to define dLmin and dMLTmin
+		;------------------------------------------------
+
+		sc_absolute_separation,rb+'_lshell_interp_tc','fb_mcilwainL_tc',rb+'_mlt_interp_tc','fb_mlt_tc'
+
+
 
 		if testing then begin
-			tplot,[rb+'_lshell_interp_tc','fb_mcilwainL_tc',rb+'_mlt_interp_tc','fb_mlt_tc']
+		  ylim,'separation_absolute',-20,20
+		  options,['separation_absolute','ldiff_tc','mltdiff_tc',rb+'_lshell_interp_tc',rb+'_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc'],'psym',-2
+		  tplot,[rb+'_lshell_interp_tc','fb_mcilwainL_tc',rb+'_mlt_interp_tc','fb_mlt_tc']
+		  stop
+		  tplot,['separation_absolute','ldiff_tc','mltdiff_tc',rb+'_lshell_interp_tc',rb+'_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc']
+		  stop
 		endif
 
-		ylim,'separation_absolute',-20,20
-		options,['separation_absolute','ldiff_tc','mltdiff_tc',rb+'_lshell_interp_tc',rb+'_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc'],'psym',-2
-;		tplot,['separation_absolute','ldiff_tc','mltdiff_tc',rb+'_lshell_interp_tc',rb+'_mlt_interp_tc','fb_mlt_tc','fb_mcilwainL_tc']
 
-		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
+
+;		;define minimum dL and dMLT values by the time when the absolute separation is a minimum
 		get_data,'separation_absolute',tt,dat
 
 
@@ -444,13 +486,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
-
-
-
-
-
-	  ;select conjunction times only. NOTE: there are some conjunctions with
-		;missing FIREBIRD context data. These will trigger the NaN values below
 		boo = where((tt ge t0[j]) and (tt le t1[j]))
 		if boo[0] ne -1 then begin
 			min_sep = min(dat[boo],/nan,whsep)
@@ -462,25 +497,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 		endif 
 
 
-;		;Check to see if any hires data loaded near the conjunction
-;		hires = 0
-;		hires = tdexists(strlowcase(fb)+'_fb_col_hires_flux',t0[j],t1[j])
-;		nsec_hires = !values.f_nan
-;
-;		if hires then begin 
-;			tmpp = tsample(strlowcase(fb)+'_fb_col_hires_flux',[t0[j],t1[j]],times=tms)
-	;		ttmp = tms - min(tms)
-	;		nsec_hires = max(ttmp,/nan)
-	;	endif
-
-;		if testing then begin
-;			tplot,['separation_absolute','ldiff_tc',rb+'_lshell_interp_tc','fb_mcilwainL_tc','mltdiff_tc',rb+'_mlt_interp_tc','fb_mlt_tc']
-;			if whsep ne -1 then timebar,tt[boo[whsep]]
-;			timebar,t0[j],color=250
-;;			timebar,t1[j],color=250
-	;	stop
-	;	endif
-
 
 		get_data,rb+'_lshell',tforline,ddd
 		store_data,'minsepline',data={x:tforline,y:replicate(min_sep,n_elements(tforline))}
@@ -491,21 +507,21 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
-		;add zero line for difference plots
-		get_data,rb+'_lshell',ttt,ddd
 
-		store_data,'mindmltline',data={x:ttt,y:replicate(min_dmlt,n_elements(ttt))}
-		store_data,'mltdiff_tc_comb',data=['mltdiff_tc','mindmltline']
-		store_data,'mindLline',data={x:ttt,y:replicate(min_dl,n_elements(ttt))}
-		store_data,'ldiff_tc_comb',data=['ldiff_tc','mindLline']
 
-		options,'mindmltline','linestyle',2
-		options,'mindLline','linestyle',2
-		options,['ldiff_tc','mltdiff_tc'],'psym',-2
-
-		ylim,'ldiff_tc_comb',-20,20
 
 		if testing then begin
+		  store_data,'mindmltline',data={x:ttt,y:replicate(min_dmlt,n_elements(ttt))}
+		  store_data,'mltdiff_tc_comb',data=['mltdiff_tc','mindmltline']
+		  store_data,'mindLline',data={x:ttt,y:replicate(min_dl,n_elements(ttt))}
+		  store_data,'ldiff_tc_comb',data=['ldiff_tc','mindLline']
+
+		  options,'mindmltline','linestyle',2
+		  options,'mindLline','linestyle',2
+		  options,['ldiff_tc','mltdiff_tc'],'psym',-2
+
+		  ylim,'ldiff_tc_comb',-20,20
+
 			timespan,t0[j]-20,(t1[j]-t0[j])+40,/seconds
 			tplot,['minsep_tc_comb','ldiff_tc_comb','mltdiff_tc_comb','lcomb','ldiff','mltcomb','mltdiff']
 			if whsep ne -1 then timebar,tt[boo[whsep]]
@@ -532,12 +548,14 @@ for j=0.,n_elements(tfb0)-1 do begin
 			mlt_min_fb = mlt2_fb
 		endif
 
-
+    ;-------------------------------------------------------------------------------------------
 		;There are quite a number of orbits where there's no overlapping FB and RBSP ephemeris data. 
 		;When this is the case, determine the RBSP L, MLT values as the average value during the start 
 		;and stop of the conjunction. Nothing I can do about the missing FB data, but at least the RBSP
 		;data will tell me where the conjunction took place.  
 		;DON'T use the interpolated values for this b/c the FB gaps show up in the RBSP ephemeris data
+		;-------------------------------------------------------------------------------------------
+
 
 		if finite(lshell_min_rb) eq 0 then begin 
 			l2_probe = tsample(rb+'_lshell',[t0[j],t1[j]],times=t)
@@ -546,7 +564,7 @@ for j=0.,n_elements(tfb0)-1 do begin
 			mlt_min_rb = mean(mlt2_probe,/nan)
 		endif
 
-		;Sometimes the FB values are outrageous. Fix them here. 
+		;Sometimes the FB values are outrageous.
 		if min_sep gt 100. then begin 
 			min_sep = !values.f_nan
 			min_dL = !values.f_nan
@@ -556,31 +574,21 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 
-
-
-
-
-;**********************************************
-;**********************************************
-;**********************************************
-;**********************************************
-;**********************************************
-
+    ;---------------------------------------------------------------------
+    ;Get the max value of the FIREBIRD context flux 
+    ;---------------------------------------------------------------------
 
     time_clip,'flux_context_'+fb,t0[j],t1[j],newname='flux_context_'+fb+'_tc'
 
 		get_data,'flux_context_'+fb+'_tc',tt,dat
 		max_flux_context = max(dat,/nan)
-
 		if max_flux_context eq 0 then max_flux_context = !values.f_nan
 
 
+		;---------------------------------------------------------------------
+    ;Figure out if we're dealing with e12 or e34 for FBK data 
+    ;---------------------------------------------------------------------
 
-
-	;	rbsp_detrend,'fb_col_flux_tc',0.2
-	;	tplot,['fb_col_flux_tc','fb_col_flux_tc_detrend']
-		
-		;Figure out if we're dealing with e12 or e34 for FBK data 
     e1234 = ''
 		tstvar = tnames('fbk7_e??dc_pk')
 		if tstvar ne '' then e1234 = strmid(tstvar,5,3)
@@ -589,85 +597,52 @@ for j=0.,n_elements(tfb0)-1 do begin
 
 
 		;---------------------------------------------------------------
+		;Find max filterbank value in various bins for FBK7/FBK13 modes
+		;---------------------------------------------------------------------
+
+
+		;The four channels that I use for FBK7 (50-100; 200-400; 0.8-1.6; 3.2-6.5)
+		;The seven channels that I use for FBK13 (50-100; 100-200; 200-400; 400-800; 0.8-1.6; 1.6-3.2; 3.2-6.5)
+
+		fbk7E = fltarr(7)
+		fbk7B = fltarr(7)
+		fbk13E = fltarr(13)
+		fbk13B = fltarr(13)
+
+
+
+		undefine,fbktmp_7E, fbktmp_7B, fbktmp_13E, fbktmp_13B
+
+		if tdexists('fbk7_'+e1234+'dc_pk',t0z,t1z) then $
+		  fbktmp_7E = tsample('fbk7_'+e1234+'dc_pk',[t0z,t1z])
+		if tdexists('fbk7_scmw_pk',t0z,t1z) then $
+		  fbktmp_7B = tsample('fbk7_scmw_pk',[t0z,t1z])
+		if tdexists('fbk13_'+e1234+'dc_pk',t0z,t1z) then $
+		  fbktmp_13E = tsample('fbk13_'+e1234+'dc_pk',[t0z,t1z])
+		if tdexists('fbk13_scmw_pk',t0z,t1z) then $
+		  fbktmp_13B = tsample('fbk13_scmw_pk',[t0z,t1z])
+
+
 
 		;Find max filterbank value in various bins for FBK7 mode
+		if keyword_set(fbktmp_7E) then begin
+		  for ch=0,6 do fbk7E[ch] = float(max(fbktmp_7E[*,ch],/nan))
+		endif else for ch=0,6 do fbk7E[ch] = !values.f_nan
+		if keyword_set(fbktmp_7B) then begin
+		  for ch=0,6 do fbk7B[ch] = float(max(fbktmp_7B[*,ch],/nan))
+		endif else for ch=0,6 do fbk7B[ch] = !values.f_nan
 
-		get_data,'fbk7_'+e1234+'dc_pk',data=dat
-		if is_struct(dat) then time_clip,'fbk7_'+e1234+'dc_pk',t0z,t1z,newname='fbk7_'+e1234+'dc_pk_tc'
-		get_data,'fbk7_scmw_pk',data=dat
-		if is_struct(dat) then time_clip,'fbk7_scmw_pk',t0z,t1z,newname='fbk7_scmw_pk_tc'
-		;Find max filterbank value in various bins for FBK13 mode
-		get_data,'fbk13_'+e1234+'dc_pk',data=dat
-		if is_struct(dat) then time_clip,'fbk13_'+e1234+'dc_pk',t0z,t1z,newname='fbk13_'+e1234+'dc_pk_tc'
-		get_data,'fbk13_scmw_pk',data=dat
-		if is_struct(dat) then time_clip,'fbk13_scmw_pk',t0z,t1z,newname='fbk13_scmw_pk_tc'
-
-		get_data,'fbk7_'+e1234+'dc_pk_tc',data=dat
-		if is_struct(dat) then begin
-			fbk7_Ewmax_3 = float(max(dat.y[*,3],/nan))  ;50-100 Hz
-			fbk7_Ewmax_4 = float(max(dat.y[*,4],/nan))  ;200-400 Hz
-			fbk7_Ewmax_5 = float(max(dat.y[*,5],/nan))  ;0.8-1.6 kHz
-			fbk7_Ewmax_6 = float(max(dat.y[*,6],/nan))  ;3.2-6.5 kHz
-		endif else begin
-			fbk7_Ewmax_3 = !values.f_nan
-			fbk7_Ewmax_4 = !values.f_nan
-			fbk7_Ewmax_5 = !values.f_nan
-			fbk7_Ewmax_6 = !values.f_nan
-		endelse
-		get_data,'fbk7_scmw_pk_tc',data=dat
-		if is_struct(dat) then begin
-			fbk7_Bwmax_3 = 1000.*float(max(dat.y[*,3],/nan))  ;50-100 Hz
-			fbk7_Bwmax_4 = 1000.*float(max(dat.y[*,4],/nan))  ;200-400 Hz
-			fbk7_Bwmax_5 = 1000.*float(max(dat.y[*,5],/nan))  ;0.8-1.6 kHz
-			fbk7_Bwmax_6 = 1000.*float(max(dat.y[*,6],/nan))  ;3.2-6.5 kHz
-		endif else begin
-			fbk7_Bwmax_3 = !values.f_nan
-			fbk7_Bwmax_4 = !values.f_nan
-			fbk7_Bwmax_5 = !values.f_nan
-			fbk7_Bwmax_6 = !values.f_nan
-		endelse
-
-;tplot,[rb+'_efw_fbk7_e??dc_pk_tc',rb+'_efw_fbk7_scmw_pk_tc']
-;stop
 
 		;Find max filterbank value in various bins for FBK13 mode
-		get_data,'fbk13_'+e1234+'dc_pk_tc',data=dat
-		if is_struct(dat) then begin
-			fbk13_Ewmax_6 = float(max(dat.y[*,6],/nan))   ;50-100 Hz
-			fbk13_Ewmax_7 = float(max(dat.y[*,7],/nan))   ;100-200 Hz
-			fbk13_Ewmax_8 = float(max(dat.y[*,8],/nan))   ;200-400 Hz
-			fbk13_Ewmax_9 = float(max(dat.y[*,9],/nan))   ;400-800 Hz
-			fbk13_Ewmax_10 = float(max(dat.y[*,10],/nan)) ;0.8-1.6 kHz
-			fbk13_Ewmax_11 = float(max(dat.y[*,11],/nan)) ;1.6-3.2 kHz
-			fbk13_Ewmax_12 = float(max(dat.y[*,12],/nan)) ;3.2-6.5 kHz
-		endif else begin
-			fbk13_Ewmax_6 = !values.f_nan
-			fbk13_Ewmax_7 = !values.f_nan
-			fbk13_Ewmax_8 = !values.f_nan
-			fbk13_Ewmax_9 = !values.f_nan
-			fbk13_Ewmax_10 = !values.f_nan
-			fbk13_Ewmax_11 = !values.f_nan
-			fbk13_Ewmax_12 = !values.f_nan
-		endelse
-		get_data,'fbk13_scmw_pk_tc',data=dat
-		if is_struct(dat) then begin
-			fbk13_Bwmax_6 = 1000.*float(max(dat.y[*,6],/nan))
-			fbk13_Bwmax_7 = 1000.*float(max(dat.y[*,7],/nan))
-			fbk13_Bwmax_8 = 1000.*float(max(dat.y[*,8],/nan))
-			fbk13_Bwmax_9 = 1000.*float(max(dat.y[*,9],/nan))
-			fbk13_Bwmax_10 = 1000.*float(max(dat.y[*,10],/nan))
-			fbk13_Bwmax_11 = 1000.*float(max(dat.y[*,11],/nan))
-			fbk13_Bwmax_12 = 1000.*float(max(dat.y[*,12],/nan))
-		endif else begin
-			fbk13_Bwmax_6 = !values.f_nan
-			fbk13_Bwmax_7 = !values.f_nan
-			fbk13_Bwmax_8 = !values.f_nan
-			fbk13_Bwmax_9 = !values.f_nan
-			fbk13_Bwmax_10 = !values.f_nan
-			fbk13_Bwmax_11 = !values.f_nan
-			fbk13_Bwmax_12 = !values.f_nan
-		endelse
-	;-----------------------------------------------
+		if keyword_set(fbktmp_13E) then begin
+		  for ch=0,12 do fbk13E[ch] = float(max(fbktmp_13E[*,ch],/nan))
+		endif else for ch=0,12 do fbk13E[ch] = !values.f_nan
+		if keyword_set(fbktmp_13B) then begin
+		  for ch=0,12 do fbk13B[ch] = float(max(fbktmp_13B[*,ch],/nan))
+		endif else for ch=0,12 do fbk13B[ch] = !values.f_nan
+
+
+
 
 		options,'ldiff_tc_comb','ytitle','Lshell!CRBSP'+probe+'-'+fb
 		options,'mltdiff_tc_comb','ytitle','MLT!CRBSP'+probe+'-'+fb
@@ -687,183 +662,92 @@ for j=0.,n_elements(tfb0)-1 do begin
 		print,'----------------------'
 
 
+    ;---------------------------------------------------------------------
+    ;Output file name
+    ;---------------------------------------------------------------------
+
+
 		if hires then fnopen = 'RBSP'+probe+'_'+fb+'_conjunction_values_hr.txt' $
 		else fnopen = 'RBSP'+probe+'_'+fb+'_conjunction_values.txt'
-
 		result = FILE_TEST(pathoutput + fnopen)
 
 
 
-	;If first time opening file, then print the header
-	;For detailed header info see RBSP_FU_conjunction_header.fmt
+    ;------------------------------------------------------------------	
+    ;If first time opening file, then print the header
+    ;For detailed header info see RBSP_FU_conjunction_header.fmt
+    ;------------------------------------------------------------------
 
 		if not result then begin
 			openw,lun,paths.immediate_conjunction_values + fnopen,/get_lun
 						printf,lun,'Conjunction data for RBSP'+probe+' and '+fb + ' from Shumko file ' + fb+'_'+rb+'_conjunctions_dL10_dMLT10_final.txt'
-						close,lun
-						free_lun,lun
+			close,lun
+			free_lun,lun
 		endif
 
 
-
+		;---------------------------------------------------------------------
+    ;Format all of the variables for output
+    ;---------------------------------------------------------------------
 
 
 		tstart = time_string(t0[j])
 		tend = time_string(t1[j])
 		tminsep = time_string(min_sep_time,tformat='YYYY-MM-DD/hh:mm:ss')
-		lshell_min_rb = string(lshell_min_rb,format='(f9.2)')
-		lshell_min_fb = string(lshell_min_fb,format='(f9.2)')
-		mlt_min_rb = string(mlt_min_rb,format='(f9.2)')
-		mlt_min_fb = string(mlt_min_fb,format='(f9.2)')
-		min_sep = string(min_sep,format='(f10.5)')
-		min_dL = string(min_dL,format='(f9.3)')
-		min_dMLT = string(min_dMLT,format='(f9.3)')
-		max_flux_context = string(max_flux_context,format='(F12.2)')
-		nsec_emf = string(nsec_emf,format='(f8.1)')
-		nsec_b1 = string(nsec_b1,format='(f8.1)')
-		nsec_b2 = string(nsec_b2,format='(f8.1)')
-
-
-		print,tstart,'  ',tend
-		print,tminsep,'   ',min_sep
-		print,lshell_min_rb,'  ',lshell_min_fb,'   ',min_dl
-		print,mlt_min_rb,'   ',mlt_min_fb,'   ',min_dmlt
-
-
-		;********************************************************************************************
-		;********************************************************************************************
-		;********************************************************************************************
-		;chnames=['0','20','0.1fce','0.5fce','fce','7300Hz']
-		;wave_vals[*,0] --> total spectral amp/power
-		;wave_vals[*,1] --> max value of spectral amp/power
-		;wave_vals[*,2] --> median value of spectral amp/power
-		;wave_vals[*,3] --> average value of spectral amp/power
-;*************MODIFY THE BELOW TO TAKE VALUES FROM WAVE_VALUESE ARRAY
-;********************************************************************************************
-;********************************************************************************************
-
-
-    ;------------------------------------------------------------------------------
-    ;Final string format of spectral E-field and B-field values
-    ;------------------------------------------------------------------------------
-
-
-    ;20 Hz to 0.1*fce (freqs lower than chorus)
-    totallowfspec_E = string(wave_valsE[1,0],format='(F27.11)')
-    maxlowfspec_E = string(wave_valsE[1,1],format='(F20.11)')
-    medianlowfspec_E = string(wave_valsE[1,2],format='(F20.11)')
-    avglowfspec_E = string(wave_valsE[1,3],format='(F20.11)')
-
-    totallowfspec_B = string(wave_valsB[1,0],format='(F27.11)')
-    maxlowfspec_B = string(wave_valsB[1,1],format='(F20.11)')
-    medianlowfspec_B = string(wave_valsB[1,2],format='(F20.11)')
-    avglowfspec_B = string(wave_valsB[1,3],format='(F20.11)')
-
-    ;0.1-0.5*fce (lower band chorus)
-    totalchorusspecL_E = string(wave_valsE[2,0],format='(F27.11)')
-    maxchorusspecL_E = string(wave_valsE[2,1],format='(F20.11)')
-    medianchorusspecL_E = string(wave_valsE[2,2],format='(F20.11)')
-    avgchorusspecL_E = string(wave_valsE[2,3],format='(F20.11)')
-
-    totalchorusspecL_B = string(wave_valsB[2,0],format='(F27.11)')
-    maxchorusspecL_B = string(wave_valsB[2,1],format='(F20.11)')
-    medianchorusspecL_B = string(wave_valsB[2,2],format='(F20.11)')
-    avgchorusspecL_B = string(wave_valsB[2,3],format='(F20.11)')
-
-    ;0.5-1*fce (upper band chorus)
-    totalchorusspecU_E = string(wave_valsE[3,0],format='(F27.11)')
-    maxchorusspecU_E = string(wave_valsE[3,1],format='(F20.11)')
-    medianchorusspecU_E = string(wave_valsE[3,2],format='(F20.11)')
-    avgchorusspecU_E = string(wave_valsE[3,3],format='(F20.11)')
-
-    totalchorusspecU_B = string(wave_valsB[3,0],format='(F27.11)')
-    maxchorusspecU_B = string(wave_valsB[3,1],format='(F20.11)')
-    medianchorusspecU_B = string(wave_valsB[3,2],format='(F20.11)')
-    avgchorusspecU_B = string(wave_valsB[3,3],format='(F20.11)')
-
-    ;<1*fce (freqs higher than chorus)
-    totalhighfspec_E = string(wave_valsE[4,0],format='(F27.11)')
-    maxhighfspec_E = string(wave_valsE[4,1],format='(F20.11)')
-    medianhighfspec_E = string(wave_valsE[4,2],format='(F20.11)')
-    avghighfspec_E = string(wave_valsE[4,3],format='(F20.11)')
-
-    totalhighfspec_B = string(wave_valsB[4,0],format='(F27.11)')
-    maxhighfspec_B = string(wave_valsB[4,1],format='(F20.11)')
-    medianhighfspec_B = string(wave_valsB[4,2],format='(F20.11)')
-    avghighfspec_B = string(wave_valsB[4,3],format='(F20.11)')
 
 
 
-
-
-
-		fbk7_Ewmax_3 = string(fbk7_Ewmax_3,format='(f8.1)')
-		fbk7_Ewmax_4 = string(fbk7_Ewmax_4,format='(f8.1)')
-		fbk7_Ewmax_5 = string(fbk7_Ewmax_5,format='(f8.1)')
-		fbk7_Ewmax_6 = string(fbk7_Ewmax_6,format='(f8.1)')
-
-		fbk7_Bwmax_3 = string(fbk7_Bwmax_3,format='(f8.1)')
-		fbk7_Bwmax_4 = string(fbk7_Bwmax_4,format='(f8.1)')
-		fbk7_Bwmax_5 = string(fbk7_Bwmax_5,format='(f8.1)')
-		fbk7_Bwmax_6 = string(fbk7_Bwmax_6,format='(f8.1)')
-
-		fbk13_Ewmax_6 = string(fbk13_Ewmax_6,format='(f8.1)')
-		fbk13_Ewmax_7 = string(fbk13_Ewmax_7,format='(f8.1)')
-		fbk13_Ewmax_8 = string(fbk13_Ewmax_8,format='(f8.1)')
-		fbk13_Ewmax_9 = string(fbk13_Ewmax_9,format='(f8.1)')
-		fbk13_Ewmax_10 = string(fbk13_Ewmax_10,format='(f8.1)')
-		fbk13_Ewmax_11 = string(fbk13_Ewmax_11,format='(f8.1)')
-		fbk13_Ewmax_12 = string(fbk13_Ewmax_12,format='(f8.1)')
-
-		fbk13_Bwmax_6 = string(fbk13_Bwmax_6,format='(f8.1)')
-		fbk13_Bwmax_7 = string(fbk13_Bwmax_7,format='(f8.1)')
-		fbk13_Bwmax_8 = string(fbk13_Bwmax_8,format='(f8.1)')
-		fbk13_Bwmax_9 = string(fbk13_Bwmax_9,format='(f8.1)')
-		fbk13_Bwmax_10 = string(fbk13_Bwmax_10,format='(f8.1)')
-		fbk13_Bwmax_11 = string(fbk13_Bwmax_11,format='(f8.1)')
-		fbk13_Bwmax_12 = string(fbk13_Bwmax_12,format='(f8.1)')
-
+    ;format statement for final output
+;    fmt = '(3(a19,2x),7(f7.2,1x),1(I10,2x),3(I5,2x),24(f17.11,2x),20(f5.1,2x))'
+    fmt = '(3(a19,2x),7(f7.2,1x),1(I10,2x),3(I5,2x),56(e8.2,2x),20(f6.1,2x))'
 
 
 ;		if finite(min_sep) ne 0 then begin
 
 		openw,lun,paths.immediate_conjunction_values + fnopen,/get_lun,/append
-		printf,lun,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
-		mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_flux_context+$
-		nsec_emf+nsec_b1+nsec_b2+$
-		totallowfspec_E+maxlowfspec_E+avglowfspec_E+medianlowfspec_E+$
-		totalchorusspecL_E+maxchorusspecL_E+avgchorusspecL_E+medianchorusspecL_E+$
-		totalchorusspecU_E+maxchorusspecU_E+avgchorusspecU_E+medianchorusspecU_E+$
-		totalhighfspec_E+maxhighfspec_E+avghighfspec_E+medianhighfspec_E+$
-		totallowfspec_B+maxlowfspec_B+avglowfspec_B+medianlowfspec_B+$
-		totalchorusspecL_B+maxchorusspecL_B+avgchorusspecL_B+medianchorusspecL_B+$
-		totalchorusspecU_B+maxchorusspecU_B+avgchorusspecU_B+medianchorusspecU_B+$
-		totalhighfspec_B+maxhighfspec_B+avghighfspec_B+medianhighfspec_B+$
-		fbk7_Ewmax_3+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+$
-		fbk7_Bwmax_3+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+$
-		fbk13_Ewmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+$
-		fbk13_Bwmax_6+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
+		printf,lun,tstart,tend,tminsep,$
+		lshell_min_rb,lshell_min_fb,$
+		mlt_min_rb,mlt_min_fb,$
+		min_sep,min_dL,min_dMLT,$
+		max_flux_context,nsec_emf,nsec_b1,nsec_b2,$
+    wave_valsE[1,0], wave_valsE[1,1], wave_valsE[1,2], wave_valsE[1,3], wave_valsE[1,4], wave_valsE[1,5], wave_valsE[1,6], $
+    wave_valsE[2,0], wave_valsE[2,1], wave_valsE[2,2], wave_valsE[2,3], wave_valsE[2,4], wave_valsE[2,5], wave_valsE[2,6], $
+    wave_valsE[3,0], wave_valsE[3,1], wave_valsE[3,2], wave_valsE[3,3], wave_valsE[3,4], wave_valsE[3,5], wave_valsE[3,6], $
+    wave_valsE[4,0], wave_valsE[4,1], wave_valsE[4,2], wave_valsE[4,3], wave_valsE[4,4], wave_valsE[4,5], wave_valsE[4,6], $
+    wave_valsB[1,0], wave_valsB[1,1], wave_valsB[1,2], wave_valsB[1,3], wave_valsB[1,4], wave_valsB[1,5], wave_valsB[1,6], $
+    wave_valsB[2,0], wave_valsB[2,1], wave_valsB[2,2], wave_valsB[2,3], wave_valsB[2,4], wave_valsB[2,5], wave_valsB[2,6], $
+    wave_valsB[3,0], wave_valsB[3,1], wave_valsB[3,2], wave_valsB[3,3], wave_valsB[3,4], wave_valsB[3,5], wave_valsB[3,6], $
+    wave_valsB[4,0], wave_valsB[4,1], wave_valsB[4,2], wave_valsB[4,3], wave_valsB[4,4], wave_valsB[4,5], wave_valsB[4,6], $
+		fbk7E[3],fbk7E[4],fbk7E[5],fbk7E[6],$
+		fbk7B[3],fbk7B[4],fbk7B[5],fbk7B[6],$
+		fbk13E[7],fbk13E[8],fbk13E[9],fbk13E[10],fbk13E[11],fbk13E[12],$
+		fbk13B[7],fbk13B[8],fbk13B[9],fbk13B[10],fbk13B[11],fbk13B[12],format=fmt
 		close,lun
-		free_lun,lun
+    free_lun,lun
+
+ 
 
 
-
-    print,tstart+' '+tend+' '+tminsep+lshell_min_rb+lshell_min_fb+$
-    mlt_min_rb+mlt_min_fb+min_sep+min_dL+min_dMLT+max_flux_context+$
-    nsec_emf+nsec_b1+nsec_b2+$
-    totallowfspec_E+maxlowfspec_E+avglowfspec_E+medianlowfspec_E+$
-    totalchorusspecL_E+maxchorusspecL_E+avgchorusspecL_E+medianchorusspecL_E+$
-    totalchorusspecU_E+maxchorusspecU_E+avgchorusspecU_E+medianchorusspecU_E+$
-    totalhighfspec_E+maxhighfspec_E+avghighfspec_E+medianhighfspec_E+$
-    totallowfspec_B+maxlowfspec_B+avglowfspec_B+medianlowfspec_B+$
-    totalchorusspecL_B+maxchorusspecL_B+avgchorusspecL_B+medianchorusspecL_B+$
-    totalchorusspecU_B+maxchorusspecU_B+avgchorusspecU_B+medianchorusspecU_B+$
-    totalhighfspec_B+maxhighfspec_B+avghighfspec_B+medianhighfspec_B+$
-    fbk7_Ewmax_3+fbk7_Ewmax_4+fbk7_Ewmax_5+fbk7_Ewmax_6+$
-    fbk7_Bwmax_3+fbk7_Bwmax_4+fbk7_Bwmax_5+fbk7_Bwmax_6+$
-    fbk13_Ewmax_6+fbk13_Ewmax_7+fbk13_Ewmax_8+fbk13_Ewmax_9+fbk13_Ewmax_10+fbk13_Ewmax_11+fbk13_Ewmax_12+$
-    fbk13_Bwmax_6+fbk13_Bwmax_7+fbk13_Bwmax_8+fbk13_Bwmax_9+fbk13_Bwmax_10+fbk13_Bwmax_11+fbk13_Bwmax_12
-
+;    print,tstart,tend,tminsep,$
+;    lshell_min_rb,lshell_min_fb,$
+;    mlt_min_rb,mlt_min_fb,$
+;    min_sep,min_dL,min_dMLT,$
+;    max_flux_context,nsec_emf,nsec_b1,nsec_b2,$
+;    wave_valsE[1,0], wave_valsE[1,1], wave_valsE[1,2], wave_valsE[1,3], wave_valsE[1,4], wave_valsE[1,5], wave_valsE[1,6], $
+;    wave_valsE[2,0], wave_valsE[2,1], wave_valsE[2,2], wave_valsE[2,3], wave_valsE[2,4], wave_valsE[2,5], wave_valsE[2,6], $
+;    wave_valsE[3,0], wave_valsE[3,1], wave_valsE[3,2], wave_valsE[3,3], wave_valsE[3,4], wave_valsE[3,5], wave_valsE[3,6], $
+;    wave_valsE[4,0], wave_valsE[4,1], wave_valsE[4,2], wave_valsE[4,3], wave_valsE[4,4], wave_valsE[4,5], wave_valsE[4,6], $
+;    wave_valsB[1,0], wave_valsB[1,1], wave_valsB[1,2], wave_valsB[1,3], wave_valsB[1,4], wave_valsB[1,5], wave_valsB[1,6], $
+;    wave_valsB[2,0], wave_valsB[2,1], wave_valsB[2,2], wave_valsB[2,3], wave_valsB[2,4], wave_valsB[2,5], wave_valsB[2,6], $
+;    wave_valsB[3,0], wave_valsB[3,1], wave_valsB[3,2], wave_valsB[3,3], wave_valsB[3,4], wave_valsB[3,5], wave_valsB[3,6], $
+;    wave_valsB[4,0], wave_valsB[4,1], wave_valsB[4,2], wave_valsB[4,3], wave_valsB[4,4], wave_valsB[4,5], wave_valsB[4,6], $
+;    fbk7E[3],fbk7E[4],fbk7E[5],fbk7E[6],$
+;    fbk7B[3],fbk7B[4],fbk7B[5],fbk7B[6],$
+;    fbk13E[7],fbk13E[8],fbk13E[9],fbk13E[10],fbk13E[11],fbk13E[12],$
+;    fbk13B[7],fbk13B[8],fbk13B[9],fbk13B[10],fbk13B[11],fbk13B[12],format=fmt
+;
+;
+;stop
 
 
 
@@ -885,8 +769,6 @@ for j=0.,n_elements(tfb0)-1 do begin
 			;	pclose
 
 
-;		endif   ;Resulting data not NaNs
-
-	endif  ;for no missing data
+		endif   ;Resulting data not NaNs
 endfor
 end
