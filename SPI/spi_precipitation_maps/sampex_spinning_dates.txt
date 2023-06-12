@@ -1,0 +1,18 @@
+
+1992/187 - 1996/128 not spinning
+1996/130 - 1996/231 spinning
+1996/233 - 1996/238 not spinning
+1996/240 - 1997/309 spinning
+1997/311 - 1997/320 not spinning
+1997/322 - 1997/351 spinning
+1997/353 - 1998/013 not spinning
+1998/015 - 1998/110 spinning
+1998/112 - 1998/117 not spinning
+1998/119 - 1998/126 spinning
+1998/128 - 1999/350 not spinning
+1999/352 - 1999/358 spinning
+1999/360 - 1999/361 not spinning
+1999/363 - 2000/032 spinning
+2000/034 - 2007/267 not spinning
+2007/269 - re-entry spinning (with possible brief interruptions for safeholds - I need to check this)
+

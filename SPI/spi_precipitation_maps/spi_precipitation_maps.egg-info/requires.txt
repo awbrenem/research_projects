@@ -1,0 +1,6 @@
+matplotlib
+sampex
+pyshp
+numpy
+pandas
+progressbar2

@@ -1,0 +1,75 @@
+-Sam will update attitude files to include HILT detector (6-sec cadence)
+-Only use SAMPEX data up until 2004. Beyond this calibrations aren't as good (simple number rather than better cal -- at least for PET), and starting late 2007 SAMPEX had continuous cartwheeling. 
+-Files will have updated DLC calculation
+
+
+
+
+
+
+
+Use wget to download files. Do this before running the code as it's much faster:
+
+wget -r -l1 -nc --no-parent -A.zip https://izw1.caltech.edu/sampex/DataCenter/DATA/HILThires/State4/
+
+
+Files should be saved to ~/sampex/
+
+
+From Shumko email:
+Hi Aaron, Here are the links to the SAMPEX data and my code to analyze it. I also copied Mark Looper’s email about SAMPEX.
+
+------------------------------
+
+Running IRBEM (Shumko's Python wrapper):
+I may occasionally have to run:   export LIBRARY_PATH="$LIBRARY_PATH:/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/usr/lib"
+
+Drift shell: see Mike’s test .py codes at python/IRBEM. (IRBEM_tests_and_visualization.py)
+
+------------------------------
+
+
+SAMPEX:
+Data: https://izw1.caltech.edu/sampex/DataCenter/data.html
+HILT info: https://izw1.caltech.edu/sampex/DataCenter/docs/HILThires.html
+PET info: https://izw1.caltech.edu/sampex/DataCenter/docs/PEThires.html
+My Python library: https://github.com/mshumko/sampex
+Misc references: https://loopers.org/
+
+
+NEXT STEPS: 
+
+Shumko email Feb 7, 2023:
+Your idea to calculate flags at the SAMPEX attitude cadence is great. Sounds like we have two possible implementations:
+(1) Append columns to the existing sampex Attitude data. Once appended, you will need to pass an updated columns dictionary to Attitude.load() method. Columns map the column number to variable name, and take a look at this code for the default column-name mapping.
+(2) Generate your own files containing the attitude time stamp and flags. Then you'll just need to call pd.merge_asof twice: first merge the SAMPEX attitude to HILT, and then merge your flags to the HILT data.
+ 
+As for the BLC/DLC flags, IRBEM’s drift_shell() function calculates local B (and the locations) in (1000, 48) steps along the drift orbit. I’m still thinking how to model the BLC/DLC orbits, because IRBEM.drift_shell assumes locally mirroring particles at the input point.
+ 
+I hope that I summed up our conversation well. Please let me know if you would like my help with implementing any of this. 
+
+
+
+
+
+
+Create a binary file at the cadence of the SAMPEX attitude data to indicate
+-Type of loss cone 
+	--(SAMPEX attitude file has SAA flag and footprint locations)
+	--use Selesnick+15 (https://agupubs.onlinelibrary.wiley.com/doi/10.1002/2015JA021387). 
+	  Stably trapped particles have B′100 > B, quasi-trapped have B100 > B > B′100 , and
+	  untrapped have B > B100. The local values (everything but drift) can be calculated from the
+	  SAMPEX attitude files. 
+	--SpacePy has a drift Lshell calculator (via RBEM library (irbempy); try https://github.com/drsteve/LANLGeoMag/tree/master/ViewDriftShell ). An easier way may be in Greeley+19. They calculate the minimum B100 for each Lshell for entire year as B' (used for DLC).
+
+
+-Which phase of a storm
+-Correct detector pointing...
+
+STEPS:
+-load attitude data ( self.attitude = sampex.Attitude(date).load() )
+-load in sea-norm list of epochs 
+-merge the two using pd.merge_asof (e.g. merged_df = pd.merge_asof(self.hilt, self.attitude, left_index=True, right_index=True, tolerance=pd.Timedelta(seconds=3), direction='nearest')
+
+
+

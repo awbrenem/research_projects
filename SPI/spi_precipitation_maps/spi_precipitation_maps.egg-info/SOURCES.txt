@@ -1,0 +1,14 @@
+README.md
+setup.cfg
+setup.py
+spi_precipitation_maps/__init__.py
+spi_precipitation_maps/__main__.py
+spi_precipitation_maps/bin_data.py
+spi_precipitation_maps/bin_sampex_hilt.py
+spi_precipitation_maps/dial.py
+spi_precipitation_maps/utils.py
+spi_precipitation_maps.egg-info/PKG-INFO
+spi_precipitation_maps.egg-info/SOURCES.txt
+spi_precipitation_maps.egg-info/dependency_links.txt
+spi_precipitation_maps.egg-info/requires.txt
+spi_precipitation_maps.egg-info/top_level.txt
