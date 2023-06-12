@@ -13,12 +13,6 @@ from spi_precipitation_maps.bin_data import Bin_Data
 from spi_precipitation_maps.dial import Dial
 
 
-##Use to load Sam's attitude files
-#import sys
-#sys.path.append('/Users/abrenema/Desktop/code/Aaron/github/research_projects/SPI/spi_precipitation_maps/')
-#import load_sampex_modified_attitude
-
-
 
 class Bin_SAMPEX_HILT:
     """
@@ -36,27 +30,38 @@ class Bin_SAMPEX_HILT:
         """
         The special method called by the Bin_Data class.
         """
+
         current_year = '0'
 
         for date in self.dates:
             print(f'Processing SAMPEX-HILT on {date.date()}')
             self.hilt = sampex.HILT(date).load()
 
+            """
+            #SHUMKO ORIGINAL METHOD USING SAMPEX'S BUILT-IN ATTITUDE FILES
+            try:
+                self.attitude = sampex.Attitude(date).load()
+            except ValueError as err:
+                # Sometimes there is HILT data without corresponding attitude data.
+                if 'A matched file not found in' in str(err):
+                    continue
+                else:
+                    raise
+            """
 
-            #Load an entire year's worth of Sam's attitude 
-            #data when necessary. Then, merge_asof can be used to select only
+            
+            #BRENEMAN MODIFICATION USING SAM'S ATTITUDE DATA 
+            #**I've tested this against Mike's original version which loads the basic 
+            #SAMPEX data files and the results are identical
+
+            #Load an entire year's worth of Sam's attitude data when necessary. Then, merge_asof can be used to select only
             #the appropriate attitude needed for a single day. 
             if str(date.date().year) != current_year:
                 try:
 
                     current_year = str(date.date().year)
-
-                    #self.attitude = sampex.Attitude(date).load()
-
-                    #Aaron's modification to load Sam's attitude files
                     self.attitude = load_sampex_modified_attitude.Attitude(current_year).load()
-                    print("Here")
-                
+                           
                 except ValueError as err:
                     # Sometimes there is HILT data without corresponding attitude data.
                     if 'A matched file not found in' in str(err):
@@ -91,6 +96,7 @@ class Bin_SAMPEX_HILT:
         self.hilt_paths = sorted(
             pathlib.Path(sampex.config['data_dir']).rglob(file_name_glob))
         if len(self.hilt_paths):
+
             date_strs = [re.findall(r"\d+", str(f.name))[0] for f in self.hilt_paths]
             self.dates = [sampex.load.yeardoy2date(date_str) for date_str in date_strs]
         else:
@@ -104,7 +110,7 @@ class Bin_SAMPEX_HILT:
             date_strs = [re.findall(r"\d+", str(d.name()))[0] for d in downloaders]
             self.dates = [sampex.load.yeardoy2date(date_str) for date_str in date_strs]
         #self.dates = [date for date in self.dates if date > datetime(1997, 1, 1)]
-        self.dates = [date for date in self.dates if (date > datetime(1998, 1, 1)) and (date < datetime(1998, 1, 16))]
+        self.dates = [date for date in self.dates if (date > datetime(1998, 12, 28)) and (date < datetime(1999, 1, 2))]
         return self.dates
 
 if __name__ == '__main__':
