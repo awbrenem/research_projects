@@ -74,6 +74,24 @@ class Bin_SAMPEX_HILT:
                 merged_df = pd.merge_asof(self.hilt, self.attitude, left_index=True, 
                     right_index=True, tolerance=pd.Timedelta(seconds=3), 
                     direction='nearest')
+                
+                #Eliminate data based on storm flag
+#                merged_df = merged_df.loc[merged_df['StormPhase'].isin(['Main','ERecovery','MRecovery','LRecovery'])]
+                #merged_df = merged_df.loc[merged_df['StormPhase'].isin(['Main'])]
+
+                #Eliminate based on DLC and BLC %. This eliminates the dominant trapped population
+#                merged_df = merged_df.loc[(merged_df['LC2Perc'] > 99) & (merged_df['DLCPerc'] > 99)]
+
+
+
+#tst = np.where(merged_df.LC2Perc != 100)
+#                fig, axs = plt.subplots(3)
+#                axs[0].plot(merged_df.counts,'.')
+#                axs[1].plot(merged_df.DLCPerc,'.')
+#                axs[2].plot(merged_df.LC2Perc,'.')
+                #for i in range(len(axs)):
+                #    axs[i].xlim()
+
             except ValueError as err:
                 if 'keys must be sorted' in str(err):
                     continue
@@ -110,7 +128,8 @@ class Bin_SAMPEX_HILT:
             date_strs = [re.findall(r"\d+", str(d.name()))[0] for d in downloaders]
             self.dates = [sampex.load.yeardoy2date(date_str) for date_str in date_strs]
         #self.dates = [date for date in self.dates if date > datetime(1997, 1, 1)]
-        self.dates = [date for date in self.dates if (date > datetime(1998, 12, 28)) and (date < datetime(1999, 1, 2))]
+        #self.dates = [date for date in self.dates if (date > datetime(1998, 1, 1)) and (date < datetime(1998, 1, 12))]
+        self.dates = [date for date in self.dates if (date > datetime(1998, 3, 9)) and (date < datetime(1998, 3, 25))]
         return self.dates
 
 if __name__ == '__main__':
@@ -119,6 +138,8 @@ if __name__ == '__main__':
 
     m = Bin_Data(L_bins, MLT_bins, 'L_Shell', 'MLT', 'counts', Bin_SAMPEX_HILT)
     try:
+        #Aaron's Note: Data are loaded and then binned for each single day in a loop. This means that I need to 
+        #apply flags after data load.
         m.bin()
     finally:
         m.save_map('sampex_hilt_l_mlt_map.csv')
