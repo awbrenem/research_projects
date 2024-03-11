@@ -26,6 +26,11 @@ Ends Nov 7, 2012
 """
 
 
+#SPI comparison dates with Josh: 
+#I picked a weaker storm time with less POES satellites in the air and a stronger storm with a lot of POES satellites. 
+#427,2005-07-04 16:37:00,2005-07-07 00:00:00,2005-07-07 00:01:00,2005-07-07 00:02:00,-81.0
+#450,2011-10-21 08:42:00,2011-10-24 22:36:00,2011-10-25 01:15:00,2011-10-28 11:42:00,-160.0
+
 
 from datetime import datetime
 from datetime import timedelta
@@ -44,7 +49,10 @@ import sys
 sys.path.append('/Users/abrenema/Desktop/code/Aaron/github/signal_analysis/')
 import plot_spectrogram as ps
 import pickle
+from mpl_toolkits.axes_grid1 import make_axes_locatable  #for scaling colorbar to plot size
+import netCDF4
 
+#Josh indicates that a bin size of 5 deg lat and 10 deg long should be good for entire POES mission.
 
 
 #Define bins and labels
@@ -52,31 +60,58 @@ L_bins = np.arange(2, 11)
 MLT_bins = np.arange(0, 24.1)
 x_col = 'L_Shell'
 y_col = 'MLT'
-GEOLong_bins = np.ceil(np.arange(-180.01,180.01,20))
-GEOLat_bins = np.ceil(np.arange(-90.1,90.1,10))
+#GEOLong_bins = np.ceil(np.arange(-180.01,180.01,10))
+#GEOLat_bins = np.ceil(np.arange(-90.1,90.1,5))
+latdelta = 10 
+londelta = 10
+
+GEOLong_bins = np.ceil(np.arange(0,360.01,londelta))
+GEOLat_bins = np.ceil(np.arange(-90.1,90.1,latdelta))
 x_col2 = 'GEO_Long'
 y_col2 = 'GEO_Lat'
 precipitation_col = 'counts'
 
 
+
 #Define phase of interest (initial, main, recovery, or quiet)
-Ptype = 'quiet'
+Ptype = 'recovery'
 #Define loss cone type
 lcType = 'BLC'
+
+#Geometric factor (cm2*sr) for STATE 4 data from 1996-220 thru 2004-182
+#see https://izw1.caltech.edu/sampex/DataCenter/docs/HILThires.html
+geometric_fac = 15
+
+
+
+
+#Versions of independent variables that are the same size as the data arrays. Each value is the 
+#midpoint value. GEOLat_bins and GEOLong_bins are one size greater and include the end points. 
+latbins = GEOLat_bins + latdelta/2
+latbins = latbins[0:-1]
+lonbins = GEOLong_bins + londelta/2
+lonbins = lonbins[0:-1]
+
+
+
+
+
+
+
 
 
 #Global variables
 meanVals = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1))
 samples = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1))
 quantileVals = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1,5))
-altitude = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1,5))
-attitudeFlag = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1,5))
+altitude = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1))
+attitudeFlag = np.zeros((L_bins.shape[0]-1, MLT_bins.shape[0]-1))
 
 meanVals2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1))
 samples2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1))
 quantileVals2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1,5))
-altitude2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1,5))
-attitudeFlag2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1,5))
+altitude2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1))
+attitudeFlag2 = np.zeros((GEOLong_bins.shape[0]-1, GEOLat_bins.shape[0]-1))
 
 
 def stormPhaseName(sPhse):
@@ -111,6 +146,11 @@ def get_statisticVals(mergedvals):
     quantileVals[:] = 0
     altitude[:] = 0
     attitudeFlag[:] = 0
+    meanVals2[:] = 0
+    samples2[:] = 0 
+    quantileVals2[:] = 0
+    altitude2[:] = 0
+    attitudeFlag2[:] = 0
 
     for i, (start_x, end_x) in enumerate(zip(L_bins[:-1], L_bins[1:])):
         for j, (start_y, end_y) in enumerate(zip(MLT_bins[:-1], MLT_bins[1:])):
@@ -124,18 +164,12 @@ def get_statisticVals(mergedvals):
             if filtered_data.shape[0] == 0:
                 continue
 
-            samples[i,j] += filtered_data.shape[0]  #number of time samples
-            quantileVals[i,j,:] = np.quantile(filtered_data[precipitation_col],[0,0.25,0.5,0.75,1])
+            samples[i,j] += filtered_data.shape[0]  #number of time samples in each bin
+            quantileVals[i,j,:] = np.quantile(filtered_data[precipitation_col],[0.05,0.25,0.5,0.75,0.95])
             meanVals[i,j] = np.nanmean(filtered_data[precipitation_col])
             altitude[i,j] = np.nanmean(filtered_data['Altitude'])
             attitudeFlag[i,j] = np.nanmean(filtered_data['Att_Flag'])
 
-    #Reset the values for each time chunk
-    meanVals2[:] = 0
-    samples2[:] = 0 
-    quantileVals2[:] = 0
-    altitude2[:] = 0
-    attitudeFlag2[:] = 0
 
     for i, (start_x, end_x) in enumerate(zip(GEOLong_bins[:-1], GEOLong_bins[1:])):
         for j, (start_y, end_y) in enumerate(zip(GEOLat_bins[:-1], GEOLat_bins[1:])):
@@ -150,7 +184,7 @@ def get_statisticVals(mergedvals):
                 continue
 
             samples2[i,j] += filtered_data.shape[0]  #number of time samples
-            quantileVals2[i,j,:] = np.quantile(filtered_data[precipitation_col],[0,0.25,0.5,0.75,1])
+            quantileVals2[i,j,:] = np.quantile(filtered_data[precipitation_col],[0.05,0.25,0.5,0.75,0.95])
             meanVals2[i,j] = np.nanmean(filtered_data[precipitation_col])
             altitude2[i,j] = np.nanmean(filtered_data['Altitude'])
             attitudeFlag2[i,j] = np.nanmean(filtered_data['Att_Flag'])
@@ -161,19 +195,44 @@ def get_statisticVals(mergedvals):
 
 def plot_results(timeStrv):
 
+
+    save_dir1 = pathlib.Path(__file__).parent / 'plots_lmlt'
+    save_dir2 = pathlib.Path(__file__).parent / 'plots_geo'
+    filename1 = 'sampexHILT_L-MLT_' + timeStrv + '_' + Ptype + '-phase_' + lcType + '.png'
+    save_path1 = save_dir1 / filename1
+    filename2 = 'sampexHILT_GEO_' + timeStrv + '_' + Ptype + '-phase_' + lcType + '.png'
+    save_path2 = save_dir2 / filename2
+
+
+    valsPlot1 = quantileVals[:,:,2]
+    valsPlot2 = quantileVals2[:,:,2]
+
+    #change zeros to NaNs so that they aren't plotted
+    valsPlot1[valsPlot1 == 0] = float("nan")
+    valsPlot2[valsPlot2 == 0] = float("nan")
+    samples[samples == 0] = float("nan")
+    samples2[samples2 == 0] = float("nan")
+
+
+    #----------------------------
+    #Polar plots of L/MLT
+    #----------------------------
+
     fig = plt.figure(figsize=(9, 4))
     ax = [plt.subplot(1, 2, i, projection='polar') for i in range(1, 3)]
 
     L_labels = [2,4,6]
     cmap = 'viridis'
 
-    dial1 = Dial(ax[0], MLT_bins, L_bins, meanVals)
+    dial1 = Dial(ax[0], MLT_bins, L_bins, valsPlot1)
     dial1.draw_dial(L_labels=L_labels,
-        mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap},
-        colorbar_kwargs={'label':'mean > 1 MeV counts', 'pad':0.1})
+        #mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap},
+        mesh_kwargs={'cmap':cmap,'vmin':0,'vmax':50},
+        colorbar_kwargs={'label':'median > 1 MeV flux\n#/cm2-sr', 'pad':0.1})
     dial2 = Dial(ax[1], MLT_bins, L_bins, samples)
     dial2.draw_dial(L_labels=L_labels,
-        mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap},
+        #mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap},
+        mesh_kwargs={'cmap':cmap},
         colorbar_kwargs={'label':'Number of samples', 'pad':0.1})
 
 
@@ -181,35 +240,71 @@ def plot_results(timeStrv):
         ax_i.set_rlabel_position(235)
         ax_i.tick_params(axis='y', colors='white')
 
-    plt.suptitle(f'SAMPEX-HILT | L-MLT map\n'+timeStrv+'\n'+Ptype + ' phase\n'+lcType + ' counts')
+    plt.suptitle(f'SAMPEX-HILT | L-MLT map\n'+timeStrv+'\n'+Ptype + ' phase\n'+lcType + ' counts and number of samples')
     plt.tight_layout()
+    plt.savefig(save_path1,dpi=200)
     plt.show()
+    plt.close(fig)
 
 
     #-----------------------------------
     #Plot the GEO long-lat results 
-    long_grid, lat_grid = np.meshgrid(GEOLong_bins, GEOLat_bins)
+    #-----------------------------------
 
-    kwargs = {'cmap':'viridis'}
-    mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap}
-
-
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(35, 5))
-    mesh1 = ax1.pcolormesh(long_grid, lat_grid, meanVals2, **mesh_kwargs)
-    ax1.set_aspect('equal')
-    colorbar_kwargs={'label':'mean > 1 MeV counts', 'pad':0.1}
-    fig.colorbar(mesh1, ax=ax1, **colorbar_kwargs)
-
-    mesh2 = ax2.pcolormesh(long_grid, lat_grid, samples2, **mesh_kwargs)
-    ax2.set_aspect('equal')
-    colorbar_kwargs={'label':'Number of samples', 'pad':0.1}
-    fig.colorbar(mesh2, ax=ax2, **colorbar_kwargs)
+    fig, axs = plt.subplots(2)
+    ps.plot_spectrogram(lonbins,latbins,np.transpose(valsPlot2),zscale='linear',vr=[0,5],plot_kwargs={'cmap':'viridis'},ax=axs[0])
+    ps.plot_spectrogram(lonbins,latbins,np.transpose(samples2),zscale='linear',vr=[0,5000],plot_kwargs={'cmap':'viridis'},ax=axs[1])
+    plt.suptitle(f'SAMPEX-HILT | GEO map\n'+timeStrv+'\n'+Ptype + ' phase\n'+lcType + ' counts and number of samples')
 
     print('h')
 
+    """
+    long_grid, lat_grid = np.meshgrid(GEOLong_bins, GEOLat_bins)
+
+    #kwargs = {'cmap':'viridis'}
+    #mesh_kwargs={'norm':matplotlib.colors.LogNorm(), 'cmap':cmap}
+    #mesh_kwargs={'cmap':cmap}
+    mesh_kwargs={'cmap':cmap,'vmin':0,'vmax':50}
+    mesh_kwargs_counts={'cmap':cmap}
+
+
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 4))
+
+
+    # create an axes on the right side of ax. The width of cax will be 5%
+    # of ax and the padding between cax and ax will be fixed at 0.05 inch.
+    divider = make_axes_locatable(ax1)
+    cax = divider.append_axes("right", size="5%", pad=0.05)
+    divider2 = make_axes_locatable(ax2)
+    cax2 = divider2.append_axes("right", size="5%", pad=0.05)
+
+
+    mesh1 = ax1.pcolormesh(long_grid, lat_grid, np.transpose(valsPlot2), **mesh_kwargs)
+    ax1.set_aspect('equal')
+    colorbar_kwargs={'label':'median > 1 MeV flux\n#/cm2-sr', 'pad':0.1}
+    fig.colorbar(mesh1, ax=ax1, **colorbar_kwargs,cax=cax)
+
+    mesh2 = ax2.pcolormesh(long_grid, lat_grid, np.transpose(samples2), **mesh_kwargs_counts)
+    ax2.set_aspect('equal')
+    colorbar_kwargs={'label':'Number of samples', 'pad':0.1}
+    fig.colorbar(mesh2, ax=ax2, **colorbar_kwargs,cax=cax2)
+
+    plt.suptitle(f'SAMPEX-HILT | GEO map\n'+timeStrv+'\n'+Ptype + ' phase\n'+lcType + ' counts and number of samples')
+    plt.tight_layout()
+    plt.savefig(save_path2, dpi=200)
+
+    plt.show()
+    plt.close(fig)
+    """
+
+
+
+
+
+
 #---------------------------------------------------------------------
-#Quantities to save: mean, quantiles (25, 75), altitude
-    
+#Save quantities to netCDF file
+#---------------------------------------------------------------------
 
 def save_data(timeStr2v):
 
@@ -232,18 +327,81 @@ def save_data(timeStr2v):
           'attitudeFlag':attitudeFlag}
 
 
+    """
     #Save all values in a pandas dataframe
-    filename = 'sampexHILT_vals_' + timeStr2v + '.pkl'
+    filename = 'sampexHILT_vals_' + Ptype + '-phase_' + lcType + '-' + timeStr2v + '.pkl'
     save_path = save_dir / filename
     dataFile = open(save_path, 'wb')
     pickle.dump(data, dataFile)
     dataFile.close()
+    """
+    #--------------------------------------------
+    #Save data to a Netcdf file
+    #see tutorial at https://unidata.github.io/python-training/workshop/Bonus/netcdf-writing/
+    #--------------------------------------------
 
 
-    ##Open for testing
-    #tmp = open(save_path, 'rb')
-    #data2 = pickle.load(tmp)
-    #tmp.close()
+    filename = 'sampexHILT_vals_' + Ptype + '-phase_' + lcType + '-' + timeStr2v + '.nc4'
+    save_dir = '/Users/abrenema/Desktop/code/Aaron/github/research_projects/SPI/spi_precipitation_maps/spi_precipitation_maps/data/'
+    nc = netCDF4.Dataset(save_dir + filename,'w',format='NETCDF4')
+
+    lat_dim = nc.createDimension('lat',len(latbins))
+    lon_dim = nc.createDimension('lon',len(lonbins))
+    l_dim = nc.createDimension('l',len(L_bins)-1)
+    mlt_dim = nc.createDimension('mlt',len(MLT_bins)-1)
+    quants_dim = nc.createDimension('quants',5)
+
+
+    #independent variables
+    lat = nc.createVariable('lat',np.float32, ('lat'))
+    lon = nc.createVariable('lon',np.float32, ('lon'))
+    l = nc.createVariable('l',np.float32,('l'))
+    mlt = nc.createVariable('mlt',np.float32,('mlt'))
+    lat.units = 'deg'
+    lat.long_name = 'GEO latitude'
+    lon.units = 'deg'
+    lon.long_name = 'GEO longitude'
+    l.units = 'Lvalue'
+    l.long_name = 'L-shell'
+    mlt.units = 'hrs'
+    mlt.long_name = 'magnetic local time'
+
+    #dependent variables
+    samplesGEO = nc.createVariable('samplesGEO',np.float32,('lon','lat'))
+    samplesLMLT = nc.createVariable('samplesLMLT',np.float32,('l','mlt'))
+    quantilesGEO = nc.createVariable('quantilesGEO',np.float32,('lon','lat','quants'))
+    quantilesLMLT = nc.createVariable('quantilesLMLT',np.float32,('l','mlt','quants'))
+    meanGEO = nc.createVariable('meanGEO',np.float32,('lon','lat'))
+    meanLMLT = nc.createVariable('meanLMLT',np.float32,('l','mlt'))
+    samplesGEO.standard_name = '# samples'
+    samplesLMLT.standard_name = '# samples'
+    samplesGEO.long_name = 'SAMPEX HILT samples per sector'
+    samplesLMLT.long_name = 'SAMPEX HILT samples per sector'
+    quantilesGEO.standard_name = 'quantiles'
+    quantilesLMLT.standard_name = 'quantiles'
+    quantilesGEO.long_name = 'SAMPEX HILT (5,25,50,75,95) quantiles'
+    quantilesLMLT.long_name = 'SAMPEX HILT (5,25,50,75,95) quantiles'
+    meanGEO.standard_name = 'means'
+    meanLMLT.standard_name = 'means'
+    meanGEO.long_name = 'SAMPEX HILT mean values'
+    meanLMLT.long_name = 'SAMPEX HILT mean values'
+
+
+    #assign data
+    samplesGEO[:,:] = samples2
+    quantilesGEO[:,:,:] = quantileVals2
+    meanGEO[:,:] = meanVals2
+    lon[:] = lonbins
+    lat[:] = latbins
+    samplesLMLT[:,:] = samples
+    quantilesLMLT[:,:,:] = quantileVals
+    meanLMLT[:,:] = meanVals
+    l[:] = L_bins[0:-1]
+    mlt[:] = MLT_bins[0:-1]
+
+    nc.close()
+
+
 
 
 
@@ -255,7 +413,10 @@ if __name__ == '__main__':
     stormDates = GetStormPhaseList()
 
     #Reduce storm dates to timerange of available HILT data (1996-08-07 to 2012-11-07)
-    stormDates = stormDates.loc[(stormDates['Istart'] >= datetime(1996,8,8)) & (stormDates['Rstop'] <= datetime(2012,11,7))]
+    #stormDates = stormDates.loc[(stormDates['Istart'] >= datetime(1996,8,8)) & (stormDates['Rstop'] <= datetime(2012,11,7))]
+
+    #Select custom start date
+    stormDates = stormDates.loc[(stormDates['Istart'] >= datetime(2001,3,29)) & (stormDates['Rstop'] <= datetime(2012,11,7))]
     stormDates.reset_index(drop=True, inplace=True)
 
 
@@ -286,7 +447,12 @@ if __name__ == '__main__':
             datestart = goo[startName].to_pydatetime()
             dateend = goo[stopName].to_pydatetime()
 
+            #SPI comparison dates with Josh: 
+            #59,2001-03-30 14:28:00,2001-03-31 04:47:00,2001-03-31 08:06:00,2001-04-03 05:31:00,-437.0
+            #89,2002-12-16 17:08:00,2002-12-19 11:53:00,2002-12-21 03:18:00,2002-12-22 10:30:00,-90.0
 
+            #sampexHILT_vals_initial-BLC-20010330_142800_3hrs_initialphase_BLC.pkl
+            #sampexHILT_GEO_initial-phase_BLC_20010330_142800-20010330_172800 (3 hrs).png
             #----------------------------------------------------------------
             #load HILT data for first (and possibly only) day
             #---NOTE: these hires files are very large and I can't load more than one day at a time
@@ -294,7 +460,8 @@ if __name__ == '__main__':
             #---if necessary and do the same.
 
             #Determine number of time chunks
-            nchunks = math.ceil((dateend - datestart).seconds / (nhrsS*3600))
+            tmp = (dateend - datestart).total_seconds()
+            nchunks = math.ceil(tmp / (nhrsS*3600))
 
             for nc in range(nchunks):
 
@@ -337,10 +504,12 @@ if __name__ == '__main__':
                 attitude = attitudeFull.loc[(attitudeFull.index > (t0 - timedelta(minutes=10))) & 
                                         (attitudeFull.index <= (t1 + timedelta(minutes=10)))] 
 
-                nextYearFlag = t1.year-t0.year  #time chunk crosses day boundary?
+                fig, axs = plt.subplots(2)
+                axs[0].plot(attitude['GEO_Long'])
+                axs[1].plot(attitude['GEO_Lat'])
 
-
-
+                #time chunk crosses year boundary?
+                nextYearFlag = t1.year-t0.year
                 if nextYearFlag == 1: 
                     attitudeFull = load_sampex_modified_attitude.Attitude(str(t1.year)).load()
                     attitude2 = attitudeFull.loc[(attitudeFull.index > (t0 - timedelta(minutes=10))) & 
@@ -376,6 +545,18 @@ if __name__ == '__main__':
                 merged = merged.loc[merged[lcTypeStr] > 99]
 
 
+                #Change Sam's GEO long values from -180-180 to 0-360 to match Josh's files
+                #goo = np.where(merged.GEO_Long < 0)
+                #merged.GEO_Long[goo[0]] += 360
+                merged.GEO_Long[merged.GEO_Long < 0] += 360
+
+
+
+                #Change counts to flux 
+                merged.counts /= geometric_fac
+
+
+
                 #Get mean values 
                 get_statisticVals(merged)
 
@@ -383,14 +564,14 @@ if __name__ == '__main__':
                 #Plot the L-MLT results 
                 #...Total chunksize to 3 significant digits
                 dt = (t1-t0)/timedelta(hours=1)
-                dt = str('{:g}'.format(float('{:.3g}'.format(dt))))
-                timeStr = t0.strftime("%Y%m%d_%H%M%S") + '-' + t1.strftime("%Y%m%d_%H%M%S") + ' (' + dt + ' hrs)'
+                dt = str('{:g}'.format(float('{:.2g}'.format(dt))))
+                timeStr = t0.strftime("%Y%m%d_%H%M%S") + '-' + t1.strftime("%Y%m%d_%H%M%S") + '_' + dt + 'hrs'
                 plot_results(timeStr)
 
 
-
                 #Save maps to a csv files.
-                timeStr2 = t0.strftime("%Y%m%d_%H%M%S") + '_' + dt + 'hrs_' + Ptype +  'phase_'+lcType
+                #timeStr2 = t0.strftime("%Y%m%d_%H%M%S") + '_' + t1.strftime("%Y%m%d_%H%M%S") + '_' + dt + 'hrs_' + Ptype +  'phase_'+lcType
+                timeStr2 = t0.strftime("%Y%m%d_%H%M%S") + '_' + t1.strftime("%Y%m%d_%H%M%S") + '_' + dt + 'hrs'
                 save_data(timeStr2)
 
 
@@ -400,6 +581,7 @@ if __name__ == '__main__':
         #full year of attitude
         attitudeFull = load_sampex_modified_attitude.Attitude(str(quietTimes[0].year)).load()
         hiltFull = sampex.HILT(quietTimes[0]).load()
+
 
 
         for sd in range(len(quietTimes)-1):
@@ -450,14 +632,17 @@ if __name__ == '__main__':
 
 
             #Total chunksize to 3 significant digits
-            timeStr = datestart.strftime("%Y%m%d_%H%M%S") + '-' + dateend.strftime("%Y%m%d_%H%M%S") + ' (' + str(nhrsQ) + ' hrs)'
+            timeStr = datestart.strftime("%Y%m%d_%H%M%S") + '-' + dateend.strftime("%Y%m%d_%H%M%S") + '_' + str(nhrsQ) + 'hrs'
             plot_results(timeStr)
 
 
 
             #Save maps to a csv files
-            timeStr2 = datestart.strftime("%Y%m%d_%H%M%S") + '_' + str(nhrsQ) + 'hrs_' + Ptype +  'phase_'+lcType
+            #timeStr2 = datestart.strftime("%Y%m%d_%H%M%S") + '_' + str(nhrsQ) + 'hrs_' + Ptype +  'phase_'+lcType
+            timeStr2 = datestart.strftime("%Y%m%d_%H%M%S") + '_' + dateend.strftime("%Y%m%d_%H%M%S") + '_' + str(nhrsQ) + 'hrs'
             save_data(timeStr2)
+
+
 
 
 
